@@ -19,16 +19,25 @@ class JExpr(object, metaclass=abc.ABCMeta):
 
 class JUnit(JExpr, metaclass=abc.ABCMeta):
     def __init__(self, val):
-        self.val = val
+        if isinstance(val, int):
+            self.val = val
+        else:
+            raise TypeError()
 
     def strOut(self):
         return str(self.val)
 
+    def run(self):
+        return self.val
+
 
 class JBinary(JExpr, metaclass=abc.ABCMeta):
     def __init__(self, l, r):
-        self.left = l
-        self.right = r
+        if isinstance(l, JExpr) and isinstance(r, JExpr):
+            self.left = l
+            self.right = r
+        else:
+            raise TypeError()
 
 
 class JInt(JUnit):
@@ -42,6 +51,11 @@ class JAdd(JBinary):
         outString = "( " + lString + " + " + rString + " )"
         return outString
 
+    def run(self):
+        leftRes = self.left.run()
+        rightRes = self.right.run()
+        return leftRes + rightRes
+
 
 class JMult(JBinary):
     def strOut(self):
@@ -49,3 +63,19 @@ class JMult(JBinary):
         rString = self.right.strOut()
         outString = "( " + lString + " * " + rString + " )"
         return outString
+
+    def run(self):
+        leftRes = self.left.run()
+        rightRes = self.right.run()
+        return leftRes * rightRes
+
+
+class JProg(object):
+    def __init__(self, expr):
+        self.expr = expr
+
+    def run(self):
+        return self.expr.run()
+
+    def strOut(self):
+        return self.expr.strOut()
