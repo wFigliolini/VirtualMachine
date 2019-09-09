@@ -13,13 +13,16 @@ class JExpr(object, metaclass=abc.ABCMeta):
 
     # Abstract method for printer
     @abc.abstractmethod
-    def print(self):
+    def strOut(self):
         raise NotImplemented()
 
 
 class JUnit(JExpr, metaclass=abc.ABCMeta):
     def __init__(self, val):
         self.val = val
+
+    def strOut(self):
+        return str(self.val)
 
 
 class JBinary(JExpr, metaclass=abc.ABCMeta):
@@ -33,8 +36,16 @@ class JInt(JUnit):
 
 
 class JAdd(JBinary):
-    pass
+    def strOut(self):
+        lString = self.left.strOut()
+        rString = self.right.strOut()
+        outString = "( " + lString + " + " + rString + " )"
+        return outString
 
 
 class JMult(JBinary):
-    pass
+    def strOut(self):
+        lString = self.left.strOut()
+        rString = self.right.strOut()
+        outString = "( " + lString + " * " + rString + " )"
+        return outString
