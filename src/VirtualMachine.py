@@ -3,7 +3,31 @@ Main file, containing J language defitions and High Level Functionallity
 '''
 
 import abc
+import string
+from collections import deque
 
+
+class cons(object):
+    def __init__(self, l: string, r: cons = None):
+        first = l
+        second = r
+
+
+def isCons(se):
+    return isinstance(se, cons)
+
+
+def len(se):
+    if se is None:
+        return 0
+    elif isCons(se):
+        return 1+len(se)
+    else:
+        raise TypeError()
+
+
+class SExpr(cons):
+    pass
 
 class JExpr(object, metaclass=abc.ABCMeta):
     # Abstract Method for execution
