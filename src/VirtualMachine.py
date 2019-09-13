@@ -8,7 +8,7 @@ from collections import deque
 
 
 class cons(object):
-    def __init__(self, l: string, r: cons = None):
+    def __init__(self, l: str, r: cons = None):
         first = l
         second = r
 
@@ -27,7 +27,15 @@ def len(se):
 
 
 class SExpr(cons):
-    pass
+    def __init__(self, se: str):
+        terms = se.split()
+        self.first = terms[0]
+        terms.remove(0)
+        curr = self
+        for term in terms:
+            curr.second = cons(term)
+            curr = curr.second
+
 
 class JExpr(object, metaclass=abc.ABCMeta):
     # Abstract Method for execution
@@ -103,3 +111,7 @@ class JProg(object):
 
     def strOut(self):
         return self.expr.strOut()
+
+
+def desugar(se: SExpr) -> JExpr:
+    pass
