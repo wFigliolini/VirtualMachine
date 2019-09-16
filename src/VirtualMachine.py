@@ -8,7 +8,7 @@ from collections import deque
 
 
 class cons(object):
-    def __init__(self, l: str, r: cons = None):
+    def __init__(self, l: str, r = None):
         first = l
         second = r
 
@@ -63,43 +63,34 @@ class JUnit(JExpr, metaclass=abc.ABCMeta):
         return self.val
 
 
-class JBinary(JExpr, metaclass=abc.ABCMeta):
-    def __init__(self, l, r):
+class JBinary(JExpr):
+    def __init__(self, op, l, r):
         if isinstance(l, JExpr) and isinstance(r, JExpr):
+            self.op = op
             self.left = l
             self.right = r
         else:
             raise TypeError()
 
+    def run(self):
+        leftRes = self.left.run()
+        rightRes = self.right.run()
+        if self.op == "+":
+            return leftRes + rightRes
+        elif self.op == "*":
+            return  leftRes * rightRes
+        else:
+            raise Exception("Invalid Operator")
+
+    def strOut(self):
+        lString = self.left.strOut()
+        rString = self.right.strOut()
+        outString = "(" + self.op + " " + lString + " " + rString + " )"
+        return outString
+
 
 class JInt(JUnit):
     pass
-
-
-class JAdd(JBinary):
-    def strOut(self):
-        lString = self.left.strOut()
-        rString = self.right.strOut()
-        outString = "( " + lString + " + " + rString + " )"
-        return outString
-
-    def run(self):
-        leftRes = self.left.run()
-        rightRes = self.right.run()
-        return leftRes + rightRes
-
-
-class JMult(JBinary):
-    def strOut(self):
-        lString = self.left.strOut()
-        rString = self.right.strOut()
-        outString = "( " + lString + " * " + rString + " )"
-        return outString
-
-    def run(self):
-        leftRes = self.left.run()
-        rightRes = self.right.run()
-        return leftRes * rightRes
 
 
 class JProg(object):
