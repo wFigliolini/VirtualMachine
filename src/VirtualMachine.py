@@ -8,9 +8,14 @@ from collections import deque
 
 
 class cons(object):
-    def __init__(self, l: str, r = None):
-        first = l
-        second = r
+    def __init__(self, l, r=None):
+        self.first = l
+        self.second = r
+
+    def print(self):
+        if self.second is None:
+            return self.first
+        return self.first + " " + self.second.print()
 
 
 def isCons(se):
@@ -27,14 +32,26 @@ def len(se):
 
 
 class SExpr(cons):
-    def __init__(self, se: str):
-        terms = se.split()
-        self.first = terms[0]
-        terms.remove(0)
+    def __init__(self, se):
+        if isinstance(se, str):
+            se = se.split()
+            if se[0] == "(":
+                se.pop(0)
+        self.first = se[0]
+        se.pop(0)
         curr = self
-        for term in terms:
-            curr.second = cons(term)
-            curr = curr.second
+        while se:
+            term = se[0]
+            if term == "(":
+                se.pop(0)
+                curr.first = SExpr(se)
+            elif term == ")":
+                se.pop(0)
+                return
+            else:
+                curr.second = cons(term)
+                se.pop(0)
+                curr = curr.second
 
 
 class JExpr(object, metaclass=abc.ABCMeta):
@@ -78,7 +95,7 @@ class JBinary(JExpr):
         if self.op == "+":
             return leftRes + rightRes
         elif self.op == "*":
-            return  leftRes * rightRes
+            return leftRes * rightRes
         else:
             raise Exception("Invalid Operator")
 
