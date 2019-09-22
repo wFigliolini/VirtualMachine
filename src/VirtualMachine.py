@@ -26,7 +26,7 @@ def len(se):
     if se is None:
         return 0
     elif isCons(se):
-        return 1+len(se)
+        return 1+len(se.second)
     else:
         raise TypeError()
 
@@ -34,23 +34,27 @@ def len(se):
 class SExpr(cons):
     def __init__(self, se):
         if isinstance(se, str):
-            se = se.split()
-            if se[0] == "(":
-                se.pop(0)
+            listSE = se.split()
+            if listSE[0] == "(":
+                listSE.pop(0)
+        elif isinstance(se, list):
+            listSE = se
+        else:
+            raise TypeError()
         self.first = se[0]
-        se.pop(0)
+        listSE.pop(0)
         curr = self
-        while se:
-            term = se[0]
+        while listSE:
+            term = listSE[0]
             if term == "(":
-                se.pop(0)
-                curr.first = SExpr(se)
+                listSE.pop(0)
+                curr.first = SExpr(listSE)
             elif term == ")":
-                se.pop(0)
+                listSE.pop(0)
                 return
             else:
                 curr.second = cons(term)
-                se.pop(0)
+                listSE.pop(0)
                 curr = curr.second
 
 
@@ -121,5 +125,22 @@ class JProg(object):
         return self.expr.strOut()
 
 
-def desugar(se: SExpr) -> JExpr:
-    pass
+def desugar(se) -> JExpr:
+    #Base Cases
+    if len(se) == 1:
+        if se.first == "+":
+            return JInt(0)
+        elif se.first == "*":
+            return JInt(1)
+        else:
+            #Int, unless invalid expression
+            return JInt(int(se.first))
+    else:
+        if se.first == "-":
+            pass
+        else:
+            l = se.second
+            r = l.second
+            lexpr = desugar(cons(se.first,l))
+            rexpr = desugar(cons(se.first,r))
+            return JBinary(lexpr,rexpr,se.first)
