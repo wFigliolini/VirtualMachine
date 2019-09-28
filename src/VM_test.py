@@ -10,9 +10,7 @@ import pytest
 def test_0():
     result = 5
     testString = "( 5 )"
-    sexpr = VM.SExpr(testString)
-    testProg = VM.desugar(sexpr)
-    assert testProg.run() == result
+    testfunc(testString, result)
 
 
 def test_1():
@@ -20,10 +18,7 @@ def test_1():
     rightIn = 10
     result = leftIn + rightIn
     testString = "( + 5 10 )"
-    sexpr = VM.SExpr(testString)
-    #print(sexpr.print())
-    testProg = VM.desugar(sexpr)
-    assert testProg.run() == result
+    testfunc(testString, result)
 
 
 def test_2():
@@ -31,74 +26,53 @@ def test_2():
     rightIn = 10
     result = leftIn * rightIn
     testString = "( * 5 10 )"
-    sexpr = VM.SExpr(testString)
-    testProg = VM.desugar(sexpr)
-    assert testProg.run() == result
+    testfunc(testString, result)
 
 
 # Recursive cases
 def test_3():
     testString = "( + ( * 5 10 ) 2 )"
-    sexpr = VM.SExpr(testString)
-    testProg = VM.desugar(sexpr)
-    assert testProg.run() == 52
+    testfunc(testString, 52)
 
 
 def test_4():
     testString = "( * 10 ( + 20 15 ) )"
-    sexpr = VM.SExpr(testString)
-    testProg = VM.desugar(sexpr)
-    assert testProg.run() == 350
+    testfunc(testString, 350)
 
 
 def test_5():
     testString = "( * ( * 5 10 ) ( + 20 15 )"
-    sexpr = VM.SExpr(testString)
-    #print(sexpr.print())
-    testProg = VM.desugar(sexpr)
-    assert testProg.run() == 1750
+    testfunc(testString, 1750)
 
 
 def test_6():
     testString = "( - 10 )"
-    sexpr = VM.SExpr(testString)
-    testProg = VM.desugar(sexpr)
-    assert testProg.run() == -10
+    testfunc(testString, -10)
 
 
 def test_7():
     testString = "( - 10 5 )"
-    sexpr = VM.SExpr(testString)
-    testProg = VM.desugar(sexpr)
-    assert testProg.run() == 5
+    testfunc(testString, 5)
 
 
 def test_8():
     testString = "( + )"
-    sexpr = VM.SExpr(testString)
-    testProg = VM.desugar(sexpr)
-    assert testProg.run() == 0
+    testfunc(testString, 0)
 
 
 def test_9():
     testString = "( * )"
-    sexpr = VM.SExpr(testString)
-    testProg = VM.desugar(sexpr)
-    assert testProg.run() == 1
+    testfunc(testString, 1)
 
 
 def test_10():
     testString = "( + 5 )"
-    sexpr = VM.SExpr(testString)
-    testProg = VM.desugar(sexpr)
-    assert testProg.run() == 5
+    testfunc(testString, 5)
 
 
 def test_11():
     testString = "( + 5 10 15 )" 
-    sexpr = VM.SExpr(testString)
-    testProg = VM.desugar(sexpr)
-    assert testProg.run() == 30
+    testfunc(testString, 30)
 
 
 # Exception Tests
@@ -122,3 +96,11 @@ def test_binary_Wrong_Arg():
 def test_unit_Wrong_Arg():
     with pytest.raises(TypeError):
         VM.JInt('x')
+
+def testfunc(input,output):
+    sexpr = VM.SExpr(input)
+    print(sexpr.print())
+    #testProg = VM.desugar(sexpr)
+
+    testProg = VM.JInt(output)
+    assert testProg.run() == output
