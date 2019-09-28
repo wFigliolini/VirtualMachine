@@ -99,8 +99,6 @@ def test_unit_Wrong_Arg():
 
 def testfunc(input,output):
     sexpr = VM.SExpr(input)
-    print(sexpr.print())
-    #testProg = VM.desugar(sexpr)
-
-    testProg = VM.JInt(output)
+    #print(sexpr)
+    testProg = VM.desugar(sexpr)
     assert testProg.run() == output
