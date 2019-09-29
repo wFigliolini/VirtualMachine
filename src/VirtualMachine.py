@@ -8,7 +8,10 @@ from collections import deque
 
 
 Identities = {"+" : 0, "*" : 1, "-" : 0, "/" : 1}
-Prims = ["+", "-","*", "/"]
+Prims = ["+", "-", "*", "/", "<", "<=", "==", "=>", ">"]
+PrimFunc = {"+": Add, "-": Sub, "*": Mult, "/": Div, "<": LT, "<=": LTE, "==" : EQ, "=>" : GTE, ">" : GT }
+
+
 
 """
 Converts strings into SExprs
@@ -66,6 +69,24 @@ class JUnit(JExpr, metaclass=abc.ABCMeta):
         return self.val
 
 
+class JApp(JExpr):
+    def __init__(self, Args):
+        pass
+    def run(self):
+        pass
+    def strOut(self):
+        pass
+
+
+class JIf(JExpr):
+    def __init__(self, JC, JT, JF):
+        pass
+    def run(self):
+        pass
+    def strOut(self):
+        pass
+
+
 class JBinary(JExpr):
     def __init__(self, op, l, r):
         if isinstance(l, JExpr) and isinstance(r, JExpr):
@@ -95,6 +116,9 @@ class JBinary(JExpr):
 class JInt(JUnit):
     pass
 
+
+class JBool(JUnit):
+    pass
 
 """
 Removes the operator from the start of the SExpr
