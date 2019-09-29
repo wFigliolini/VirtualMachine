@@ -96,16 +96,6 @@ class JInt(JUnit):
     pass
 
 
-class JProg(object):
-    def __init__(self, expr):
-        self.expr = expr
-
-    def run(self):
-        return self.expr.run()
-
-    def strOut(self):
-        return self.expr.strOut()
-
 """
 Removes the operator from the start of the SExpr
 SExprs are lists of the form (op, SExpr|str, ..., None)
