@@ -7,31 +7,15 @@ import string
 from collections import deque
 
 
-class cons(object):
-    def __init__(self, l, r=None):
-        self.first = l
-        self.second = r
+Identities = {"+" : 0, "*" : 1, "-" : 0, "/" : 1}
+Prims = ["+", "-","*", "/"]
 
-    def print(self):
-        if self.second is None:
-            return self.first
-        return self.first + " " + self.second.print()
-
-
-def isCons(se):
-    return isinstance(se, cons)
-
-
-def len(se):
-    if se is None:
-        return 0
-    elif isCons(se):
-        return 1+len(se.second)
-    else:
-        raise TypeError()
-
-
-class SExpr(cons):
+"""
+Converts strings into SExprs
+will remove opening ( from string and assumes
+that it was removed from previous call
+"""
+class SExpr(list):
     def __init__(self, se):
         if isinstance(se, str):
             listSE = se.split()
@@ -41,21 +25,19 @@ class SExpr(cons):
             listSE = se
         else:
             raise TypeError()
-        self.first = se[0]
-        listSE.pop(0)
-        curr = self
         while listSE:
-            term = listSE[0]
-            if term == "(":
-                listSE.pop(0)
-                curr.first = SExpr(listSE)
-            elif term == ")":
-                listSE.pop(0)
+            next = listSE[0]
+            listSE.pop(0)
+            if next == "(":
+                #New Function, need to recurse for new SExpr
+                self.append(SExpr(listSE))
+            elif next == ")":
+                #Function Complete, return new null-terminated SExpr
+                self.append(None)
                 return
             else:
-                curr.second = cons(term)
-                listSE.pop(0)
-                curr = curr.second
+                self.append(next)
+        self.append(None)
 
 
 class JExpr(object, metaclass=abc.ABCMeta):
@@ -124,23 +106,36 @@ class JProg(object):
     def strOut(self):
         return self.expr.strOut()
 
-
+"""
+Removes the operator from the start of the SExpr
+SExprs are lists of the form (op, SExpr|str, ..., None)
+"""
 def desugar(se) -> JExpr:
-    #Base Cases
-    if len(se) == 1:
-        if se.first == "+":
-            return JInt(0)
-        elif se.first == "*":
-            return JInt(1)
-        else:
-            #Int, unless invalid expression
-            return JInt(int(se.first))
-    else:
-        if se.first == "-":
-            pass
-        else:
-            l = se.second
-            r = l.second
-            lexpr = desugar(cons(se.first,l))
-            rexpr = desugar(cons(se.first,r))
-            return JBinary(lexpr,rexpr,se.first)
+    """
+    could be clean up, but needs the second if statement for
+    Cases for ( int )
+    """
+    if isinstance(se, str):
+        return JInt(int(se))
+    op = se[0]
+    if op not in Prims:
+        return JInt(int(se[0]))
+    if op == "-":
+        #unary case (op SExpr None)
+        if len(se) == 3:
+            r = desugar(se[1])
+            return JBinary("*", JInt(-1), r)
+        #binary case (op SExpr SExpr None)
+        if len(se) == 4:
+            l = desugar(se[1])
+            r = desugar(["-"] + [se[2]] + [None])
+            return JBinary("+", l, r)
+    jexpr = None
+    for exp in reversed(se):
+        if exp == op:
+            return jexpr
+        if exp is None:
+            jexpr = JInt(Identities[op])
+            continue
+        l = desugar(exp)
+        jexpr = JBinary(op, l, jexpr)
