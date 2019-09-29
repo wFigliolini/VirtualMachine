@@ -7,7 +7,7 @@ import string
 from collections import deque
 
 
-Identities = {"+" : 0, "*" : 1, "-" : 0, "/" : 1}
+Identities = {"+" : 0, "*" : 1, "-" : 0, "/" : 1, "<" : 0, "<=" : 0, "==" : 0, ">=" : 0, ">" : 0}
 Prims = ["+", "-", "*", "/", "<", "<=", "==", ">=", ">"]
 
 
@@ -28,6 +28,8 @@ class JUnit(JExpr, metaclass=abc.ABCMeta):
     def __init__(self, val):
         if isinstance(val, int):
             self.val = val
+        elif isinstance(val, bool):
+            self.val = val
         else:
             raise TypeError()
 
@@ -35,82 +37,92 @@ class JUnit(JExpr, metaclass=abc.ABCMeta):
         return str(self.val)
 
     def run(self):
-        return self.val
+        return self
 
 
 class JInt(JUnit):
     pass
 
-
 class JBool(JUnit):
     pass
 
-def Add(l: JExpr, r: JExpr):
-    lnum = l.run()
-    rnum = r.run()
+def Add(args: tuple):
+    lnum = args[1].run()
+    rnum = args[2].run()
     return JInt(lnum.val + rnum.val)
 
-
-def Sub(l: JExpr, r: JExpr):
-    lnum = l.run()
-    rnum = r.run()
+def Sub(args: tuple):
+    lnum = args[1].run()
+    rnum = args[2].run()
     return JInt(lnum.val - rnum.val)
 
-
-def Mult(l: JExpr, r: JExpr):
-    lnum = l.run()
-    rnum = r.run()
+def Mult(args: tuple):
+    lnum = args[1].run()
+    rnum = args[2].run()
     return JInt(lnum.val * rnum.val)
 
-def Div(l: JExpr, r: JExpr):
-    lnum = l.run()
-    rnum = r.run()
+def Div(args: tuple):
+    lnum = args[1].run()
+    rnum = args[2].run()
     return JInt(lnum.val / rnum.val)
 
-def LT(l: JExpr, r: JExpr):
-    lnum = l.run()
-    rnum = r.run()
+def LT(args: tuple):
+    lnum = args[1].run()
+    rnum = args[2].run()
     return JBool(lnum.val < rnum.val)
 
-def LTE(l: JExpr, r: JExpr):
-    lnum = l.run()
-    rnum = r.run()
+def LTE(args: tuple):
+    lnum = args[1].run()
+    rnum = args[2].run()
     return JBool(lnum.val <= rnum.val)
 
-def EQ(l: JExpr, r: JExpr):
-    lnum = l.run()
-    rnum = r.run()
+def EQ(args: tuple):
+    lnum = args[1].run()
+    rnum = args[2].run()
     return JBool(lnum.val == rnum.val)
 
-def GTE(l: JExpr, r: JExpr):
-    lnum = l.run()
-    rnum = r.run()
+def GTE(args: tuple):
+    lnum = args[1].run()
+    rnum = args[2].run()
     return JBool(lnum.val >= rnum.val)
 
-def GT(l: JExpr, r: JExpr):
-    lnum = l.run()
-    rnum = r.run()
+def GT(args: tuple):
+    lnum = args[1].run()
+    rnum = args[2].run()
     return JBool(lnum.val > rnum.val)
 
-PrimFunc = {"+": Add, "-": Sub, "*": Mult, "/": Div, "<": LT, "<=": LTE, "==" : EQ, ">=" : GTE, ">" : GT }
-
+PrimFunc = {"+": Add, "-": Sub, "*": Mult, "/": Div, "<": GT, "<=": LTE, "==" : EQ, ">=" : GTE, ">" : GT }
 
 class JApp(JExpr):
-    def __init__(self, Args):
-        pass
+    def __init__(self, *args):
+        self.args = args
     def run(self):
-        pass
+        if self.args[0] in Prims:
+            op = self.args[0]
+            args = self.args
+            result = PrimFunc[op](args)
+            return result
+        else:
+            return self.args[0]
     def strOut(self):
-        pass
-
+        out = "( "
+        for arg in self.args:
+            if isinstance(arg, str):
+                out = out + arg + " "
+            out += arg.strOut()
+        out += " )"
+        return out
 
 class JIf(JExpr):
     def __init__(self, JC, JT, JF):
-        pass
+        self.JC = JC
+        self.JT = JT
+        self.JF = JF
     def run(self):
-        pass
+        return None
     def strOut(self):
-        pass
+        out = "( If " + self.JC.strOut() + " " + self.JT.strOut() + " " + self.JF.strOut() + " )"
+        return out
 
 
 class JBinary(JExpr):
@@ -135,7 +147,7 @@ class JBinary(JExpr):
     def strOut(self):
         lString = self.left.strOut()
         rString = self.right.strOut()
-        outString = "(" + self.op + " " + lString + " " + rString + " )"
+        outString = "( " + self.op + " " + lString + " " + rString + " )"
         return outString
 
 
@@ -183,23 +195,12 @@ def desugar(se) -> JExpr:
     op = se[0]
     if op not in Prims:
         return JInt(int(se[0]))
-    if op == "-":
-        #unary case (op SExpr None)
-        if len(se) == 3:
-            r = desugar(se[1])
-            return JBinary("*", JInt(-1), r)
-        #binary case (op SExpr SExpr None)
-        if len(se) == 4:
-            l = desugar(se[1])
-            r = desugar(["-"] + [se[2]] + [None])
-            return JBinary("+", l, r)
     jexpr = None
     for exp in reversed(se):
         if exp == op:
-            return jexpr
+            break
         if exp is None:
             jexpr = JInt(Identities[op])
             continue
         l = desugar(exp)
-        jexpr = JBinary(op, l, jexpr)
-
+        jexpr = JApp(op, l, jexpr)
