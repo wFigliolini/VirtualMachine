@@ -8,39 +8,8 @@ from collections import deque
 
 
 Identities = {"+" : 0, "*" : 1, "-" : 0, "/" : 1}
-Prims = ["+", "-", "*", "/", "<", "<=", "==", "=>", ">"]
-PrimFunc = {"+": Add, "-": Sub, "*": Mult, "/": Div, "<": LT, "<=": LTE, "==" : EQ, "=>" : GTE, ">" : GT }
+Prims = ["+", "-", "*", "/", "<", "<=", "==", ">=", ">"]
 
-
-
-"""
-Converts strings into SExprs
-will remove opening ( from string and assumes
-that it was removed from previous call
-"""
-class SExpr(list):
-    def __init__(self, se):
-        if isinstance(se, str):
-            listSE = se.split()
-            if listSE[0] == "(":
-                listSE.pop(0)
-        elif isinstance(se, list):
-            listSE = se
-        else:
-            raise TypeError()
-        while listSE:
-            next = listSE[0]
-            listSE.pop(0)
-            if next == "(":
-                #New Function, need to recurse for new SExpr
-                self.append(SExpr(listSE))
-            elif next == ")":
-                #Function Complete, return new null-terminated SExpr
-                self.append(None)
-                return
-            else:
-                self.append(next)
-        self.append(None)
 
 
 class JExpr(object, metaclass=abc.ABCMeta):
@@ -67,6 +36,63 @@ class JUnit(JExpr, metaclass=abc.ABCMeta):
 
     def run(self):
         return self.val
+
+
+class JInt(JUnit):
+    pass
+
+
+class JBool(JUnit):
+    pass
+
+def Add(l: JExpr, r: JExpr):
+    lnum = l.run()
+    rnum = r.run()
+    return JInt(lnum.val + rnum.val)
+
+
+def Sub(l: JExpr, r: JExpr):
+    lnum = l.run()
+    rnum = r.run()
+    return JInt(lnum.val - rnum.val)
+
+
+def Mult(l: JExpr, r: JExpr):
+    lnum = l.run()
+    rnum = r.run()
+    return JInt(lnum.val * rnum.val)
+
+def Div(l: JExpr, r: JExpr):
+    lnum = l.run()
+    rnum = r.run()
+    return JInt(lnum.val / rnum.val)
+
+def LT(l: JExpr, r: JExpr):
+    lnum = l.run()
+    rnum = r.run()
+    return JBool(lnum.val < rnum.val)
+
+def LTE(l: JExpr, r: JExpr):
+    lnum = l.run()
+    rnum = r.run()
+    return JBool(lnum.val <= rnum.val)
+
+def EQ(l: JExpr, r: JExpr):
+    lnum = l.run()
+    rnum = r.run()
+    return JBool(lnum.val == rnum.val)
+
+def GTE(l: JExpr, r: JExpr):
+    lnum = l.run()
+    rnum = r.run()
+    return JBool(lnum.val >= rnum.val)
+
+def GT(l: JExpr, r: JExpr):
+    lnum = l.run()
+    rnum = r.run()
+    return JBool(lnum.val > rnum.val)
+
+PrimFunc = {"+": Add, "-": Sub, "*": Mult, "/": Div, "<": LT, "<=": LTE, "==" : EQ, ">=" : GTE, ">" : GT }
 
 
 class JApp(JExpr):
@@ -113,12 +139,35 @@ class JBinary(JExpr):
         return outString
 
 
-class JInt(JUnit):
-    pass
 
-
-class JBool(JUnit):
-    pass
+"""
+Converts strings into SExprs
+will remove opening ( from string and assumes
+that it was removed from previous call
+"""
+class SExpr(list):
+    def __init__(self, se):
+        if isinstance(se, str):
+            listSE = se.split()
+            if listSE[0] == "(":
+                listSE.pop(0)
+        elif isinstance(se, list):
+            listSE = se
+        else:
+            raise TypeError()
+        while listSE:
+            next = listSE[0]
+            listSE.pop(0)
+            if next == "(":
+                #New Function, need to recurse for new SExpr
+                self.append(SExpr(listSE))
+            elif next == ")":
+                #Function Complete, return new null-terminated SExpr
+                self.append(None)
+                return
+            else:
+                self.append(next)
+        self.append(None)
 
 """
 Removes the operator from the start of the SExpr
@@ -153,3 +202,4 @@ def desugar(se) -> JExpr:
             continue
         l = desugar(exp)
         jexpr = JBinary(op, l, jexpr)
+
