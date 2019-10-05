@@ -188,11 +188,22 @@ SExprs are lists of the form (op, SExpr|str, ..., None)
 def desugar(se) -> JExpr:
     """
     could be clean up, but needs the second if statement for
-    Cases for ( int )
+    Cases of ( int  ) or ( Bool )
     """
     if isinstance(se, str):
+        if se == "True":
+            return JBool(True)
+        elif se == "False":
+            return JBool(False)
         return JInt(int(se))
     op = se[0]
+    if op == "If":
+        temp = list()
+        for exp in se[1:]:
+            if exp is None: break
+            jexpr = desugar(exp)
+            temp.append(jexpr)
+        return JIf(temp[0], temp[1], temp[2])
     if op not in Prims:
         return JInt(int(se[0]))
     jexpr = None
