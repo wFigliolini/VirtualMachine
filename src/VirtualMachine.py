@@ -46,47 +46,69 @@ class JInt(JUnit):
 class JBool(JUnit):
     pass
 
-def Add(args: tuple):
-    lnum = args[1].run()
-    rnum = args[2].run()
-    return JInt(lnum.val + rnum.val)
+def Add(args: list):
+    while len(args) < 3:
+        args.append(JInt(Identities[args[0]]))
+    result = 0
+    for arg in args[1:]:
+        result += arg.run().val
+    return JInt(result)
 
-def Sub(args: tuple):
-    lnum = args[1].run()
-    rnum = args[2].run()
-    return JInt(lnum.val - rnum.val)
+def Sub(args: list):
+    while len(args) < 3:
+        args.insert(1, JInt(Identities[args[0]]))
+    result = args[1].run().val
+    for arg in args[2:]:
+        result -= arg.run().val
+    return JInt(result)
 
-def Mult(args: tuple):
-    lnum = args[1].run()
-    rnum = args[2].run()
-    return JInt(lnum.val * rnum.val)
+def Mult(args: list):
+    while len(args) < 3:
+        args.append(JInt(Identities[args[0]]))
+    result = 1
+    for arg in args[1:]:
+        result *= arg.run().val
+    return JInt(result)
 
-def Div(args: tuple):
-    lnum = args[1].run()
-    rnum = args[2].run()
-    return JInt(lnum.val / rnum.val)
+def Div(args: list):
+    while len(args) < 3:
+        args.insert(1, JInt(Identities[args[0]]))
+    result = args[1].run().val
+    for arg in args[2:]:
+        result /= arg.run().val
+    return JInt(result)
 
-def LT(args: tuple):
+def LT(args: list):
+    while len(args) < 3:
+        args.append(0)
     lnum = args[1].run()
     rnum = args[2].run()
     return JBool(lnum.val < rnum.val)
 
-def LTE(args: tuple):
+def LTE(args: list):
+    while len(args) < 3:
+        args.append(0)
     lnum = args[1].run()
     rnum = args[2].run()
     return JBool(lnum.val <= rnum.val)
 
-def EQ(args: tuple):
+def EQ(args: list):
+    while len(args) < 3:
+        args.append(0)
     lnum = args[1].run()
     rnum = args[2].run()
     return JBool(lnum.val == rnum.val)
 
-def GTE(args: tuple):
+def GTE(args: list):
+    while len(args) < 3:
+        args.append(0)
     lnum = args[1].run()
     rnum = args[2].run()
     return JBool(lnum.val >= rnum.val)
 
-def GT(args: tuple):
+def GT(args: list):
+    while len(args) < 3:
+        args.append(0)
     lnum = args[1].run()
     rnum = args[2].run()
     return JBool(lnum.val > rnum.val)
@@ -94,7 +116,7 @@ def GT(args: tuple):
 PrimFunc = {"+": Add, "-": Sub, "*": Mult, "/": Div, "<": GT, "<=": LTE, "==" : EQ, ">=" : GTE, ">" : GT }
 
 class JApp(JExpr):
-    def __init__(self, *args):
+    def __init__(self, args:list):
         self.args = args
     def run(self):
         if self.args[0] in Prims:
@@ -191,11 +213,7 @@ def desugar(se) -> JExpr:
     Cases of ( int  ) or ( Bool )
     """
     if isinstance(se, str):
-        if se == "True":
-            return JBool(True)
-        elif se == "False":
-            return JBool(False)
-        return JInt(int(se))
+        return fixdesugar(se)
     op = se[0]
     if op == "If":
         temp = list()
@@ -205,13 +223,17 @@ def desugar(se) -> JExpr:
             temp.append(jexpr)
         return JIf(temp[0], temp[1], temp[2])
     if op not in Prims:
-        return JInt(int(se[0]))
-    jexpr = None
-    for exp in reversed(se):
-        if exp == op:
-            break
-        if exp is None:
-            jexpr = JInt(Identities[op])
-            continue
-        l = desugar(exp)
-        jexpr = JApp(op, l, jexpr)
+        return fixdesugar(se[0])
+    jexprs = list(op)
+    for exp in se[1:]:
+        if exp is None: break
+        newJ = desugar(exp)
+        jexprs.append(newJ)
+    return JApp(jexprs)
+
+def fixdesugar(se):
+    if se == "True":
+        return JBool(True)
+    elif se == "False":
+        return JBool(False)
+    return JInt(int(se))
