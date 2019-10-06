@@ -148,20 +148,17 @@ class JApp(JExpr):
         return out
 
 class JIf(JExpr):
-    def __init__(self, JC, JT, JF):
-        self.JC = JC
-        self.JT = JT
-        self.JF = JF
+    def __init__(self, JL):
+        self.JL = JL
     def run(self):
-        c = self.JC.run()
+        c = self.JL[0].run()
         if c.val:
-            return self.JT.run()
+            return self.JL[1].run()
         else:
-            return self.JF.run()
+            return self.JL[2].run()
     def strOut(self):
         out = "( If " + self.JC.strOut() + " " + self.JT.strOut() + " " + self.JF.strOut() + " )"
         return out
-
 
 class JBinary(JExpr):
     def __init__(self, op, l, r):
@@ -233,11 +230,13 @@ def desugar(se) -> JExpr:
     op = se[0]
     if op == "If":
         temp = mkList(se)
-        return JIf(temp[0], temp[1], temp[2])
+        return JIf(temp[:3])
     if op not in Prims:
         return fixdesugar(se[0])
     jexprs = mkList(se, op)
     return JApp(jexprs)
+
+#desugar helper functions
 
 def fixdesugar(se):
     if se == "True":
@@ -245,7 +244,6 @@ def fixdesugar(se):
     elif se == "False":
         return JBool(False)
     return JInt(int(se))
-
 
 def mkList(se, start = None):
     l = list()
@@ -256,3 +254,9 @@ def mkList(se, start = None):
         jexpr = desugar(exp)
         l.append(jexpr)
     return l
+
+
+"""
+Using None to denote Holes in already existing data structures
+As None is not a valid JExpr, and should never appear in compilation
+"""
