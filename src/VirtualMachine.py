@@ -79,41 +79,53 @@ def Div(args: list):
     return JInt(result)
 
 def LT(args: list):
+    print(args)
     while len(args) < 3:
         args.append(0)
     lnum = args[1].run()
     rnum = args[2].run()
-    return JBool(lnum.val < rnum.val)
+    result = lnum.val < rnum.val
+    return JBool(result) 
+
 
 def LTE(args: list):
     while len(args) < 3:
         args.append(0)
     lnum = args[1].run()
     rnum = args[2].run()
-    return JBool(lnum.val <= rnum.val)
+    result = lnum.val <= rnum.val
+    
+    return JBool(result)
+
 
 def EQ(args: list):
+    print(args)
     while len(args) < 3:
         args.append(0)
     lnum = args[1].run()
     rnum = args[2].run()
-    return JBool(lnum.val == rnum.val)
+    result = lnum.val == rnum.val
+    return JBool(result)
+
 
 def GTE(args: list):
     while len(args) < 3:
         args.append(0)
     lnum = args[1].run()
     rnum = args[2].run()
-    return JBool(lnum.val >= rnum.val)
+    result = lnum.val >= rnum.val
+    return JBool(result)
 
 def GT(args: list):
     while len(args) < 3:
         args.append(0)
     lnum = args[1].run()
     rnum = args[2].run()
-    return JBool(lnum.val > rnum.val)
+    result = lnum.val > rnum.val
+    return JBool(result)
 
-PrimFunc = {"+": Add, "-": Sub, "*": Mult, "/": Div, "<": GT, "<=": LTE, "==" : EQ, ">=" : GTE, ">" : GT }
+
+PrimFunc = {"+": Add, "-": Sub, "*": Mult, "/": Div, "<=": LTE, ">=" : GTE, "<": LT,  "==" : EQ,  ">" : GT }
 
 class JApp(JExpr):
     def __init__(self, args:list):
@@ -141,7 +153,11 @@ class JIf(JExpr):
         self.JT = JT
         self.JF = JF
     def run(self):
-        return None
+        c = self.JC.run()
+        if c.val:
+            return self.JT.run()
+        else:
+            return self.JF.run()
     def strOut(self):
         out = "( If " + self.JC.strOut() + " " + self.JT.strOut() + " " + self.JF.strOut() + " )"
         return out
@@ -216,19 +232,11 @@ def desugar(se) -> JExpr:
         return fixdesugar(se)
     op = se[0]
     if op == "If":
-        temp = list()
-        for exp in se[1:]:
-            if exp is None: break
-            jexpr = desugar(exp)
-            temp.append(jexpr)
+        temp = mkList(se)
         return JIf(temp[0], temp[1], temp[2])
     if op not in Prims:
         return fixdesugar(se[0])
-    jexprs = list(op)
-    for exp in se[1:]:
-        if exp is None: break
-        newJ = desugar(exp)
-        jexprs.append(newJ)
+    jexprs = mkList(se, op)
     return JApp(jexprs)
 
 def fixdesugar(se):
@@ -237,3 +245,14 @@ def fixdesugar(se):
     elif se == "False":
         return JBool(False)
     return JInt(int(se))
+
+
+def mkList(se, start = None):
+    l = list()
+    if start is not None:
+        l.append(start)
+    for exp in se[1:]:
+        if exp is None: break
+        jexpr = desugar(exp)
+        l.append(jexpr)
+    return l
