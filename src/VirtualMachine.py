@@ -31,6 +31,8 @@ class JExpr(object, metaclass=abc.ABCMeta):
     def isVal(self):
         return False
 
+    def findRedex(self):
+        raise NotImplemented()
 
 class JUnit(JExpr, metaclass=abc.ABCMeta):
     def __init__(self, val):
@@ -53,6 +55,8 @@ class JUnit(JExpr, metaclass=abc.ABCMeta):
     def isVal(self):
         return True
 
+    def findRedex(self):
+        raise Exception("Units are not valid Redexes")
 
 class JInt(JUnit):
     pass
@@ -189,6 +193,20 @@ class JApp(JExpr):
                 e.plug(je)
                 return
 
+    def findRedex(self):
+        eResult = None
+        for i, e in enumerate(self.JL):
+            if e.isVal():
+                continue
+            else:
+                temp = e.findRedex()
+                if temp is None:
+                    eResult = e
+                else:
+                    eResult = temp
+                break
+        return eResult
+
 
 class JIf(JExpr):
     def __init__(self, JL):
@@ -213,7 +231,8 @@ class JIf(JExpr):
             else:
                 result = expr.isContext()
                 if result:
-                    return result
+                    break
+        return result
 
     def plug(self, je):
         for i, e in enumerate(self.JL):
@@ -223,7 +242,14 @@ class JIf(JExpr):
             elif e.isContext():
                 e.plug(je)
                 return
-
+            
+    def findRedex(self):
+        if self.JL[0].isVal():
+            return None
+        else:
+            e = self.JL[0]
+            self.JL[0] = None
+            return e
 
 class JBinary(JExpr):
     def __init__(self, op, l, r):
