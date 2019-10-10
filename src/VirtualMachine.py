@@ -11,7 +11,6 @@ Identities = {"+" : 0, "*" : 1, "-" : 0, "/" : 1, "<" : 0, "<=" : 0, "==" : 0, "
 Prims = ["+", "-", "*", "/", "<", "<=", "==", ">=", ">"]
 
 
-
 class JExpr(object, metaclass=abc.ABCMeta):
     # Abstract Method for execution
     @abc.abstractmethod
@@ -22,6 +21,9 @@ class JExpr(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def strOut(self):
         raise NotImplemented()
+
+    def isContext(self):
+        return False
 
 
 class JUnit(JExpr, metaclass=abc.ABCMeta):
@@ -43,8 +45,10 @@ class JUnit(JExpr, metaclass=abc.ABCMeta):
 class JInt(JUnit):
     pass
 
+
 class JBool(JUnit):
     pass
+
 
 def Add(args: list):
     while len(args) < 3:
@@ -54,6 +58,7 @@ def Add(args: list):
         result += arg.run().val
     return JInt(result)
 
+
 def Sub(args: list):
     while len(args) < 3:
         args.insert(1, JInt(Identities[args[0]]))
@@ -61,6 +66,7 @@ def Sub(args: list):
     for arg in args[2:]:
         result -= arg.run().val
     return JInt(result)
+
 
 def Mult(args: list):
     while len(args) < 3:
@@ -70,6 +76,7 @@ def Mult(args: list):
         result *= arg.run().val
     return JInt(result)
 
+
 def Div(args: list):
     while len(args) < 3:
         args.insert(1, JInt(Identities[args[0]]))
@@ -78,6 +85,7 @@ def Div(args: list):
         result /= arg.run().val
     return JInt(result)
 
+
 def LT(args: list):
     print(args)
     while len(args) < 3:
@@ -85,7 +93,7 @@ def LT(args: list):
     lnum = args[1].run()
     rnum = args[2].run()
     result = lnum.val < rnum.val
-    return JBool(result) 
+    return JBool(result)
 
 
 def LTE(args: list):
@@ -94,7 +102,6 @@ def LTE(args: list):
     lnum = args[1].run()
     rnum = args[2].run()
     result = lnum.val <= rnum.val
-    
     return JBool(result)
 
 
@@ -116,6 +123,7 @@ def GTE(args: list):
     result = lnum.val >= rnum.val
     return JBool(result)
 
+
 def GT(args: list):
     while len(args) < 3:
         args.append(0)
@@ -127,38 +135,65 @@ def GT(args: list):
 
 PrimFunc = {"+": Add, "-": Sub, "*": Mult, "/": Div, "<=": LTE, ">=" : GTE, "<": LT,  "==" : EQ,  ">" : GT }
 
+
 class JApp(JExpr):
-    def __init__(self, args:list):
-        self.args = args
+    def __init__(self, JL: list):
+        self.JL = JL
+
     def run(self):
-        if self.args[0] in Prims:
-            op = self.args[0]
-            args = self.args
-            result = PrimFunc[op](args)
+        if self.JL[0] in Prims:
+            op = self.JL[0]
+            JL = self.JL
+            result = PrimFunc[op](JL)
             return result
         else:
-            return self.args[0]
+            return self.JL[0]
+
     def strOut(self):
         out = "( "
-        for arg in self.args:
+        for arg in self.JL:
             if isinstance(arg, str):
                 out = out + arg + " "
             out += arg.strOut()
         out += " )"
         return out
 
+    def isContext(self):
+        result = False
+        for expr in self.JL:
+            if expr is None:
+                return True
+            else:
+                result = expr.isContext()
+                if result:
+                    return result
+
+
 class JIf(JExpr):
     def __init__(self, JL):
         self.JL = JL
+
     def run(self):
         c = self.JL[0].run()
         if c.val:
             return self.JL[1].run()
         else:
             return self.JL[2].run()
+
     def strOut(self):
         out = "( If " + self.JC.strOut() + " " + self.JT.strOut() + " " + self.JF.strOut() + " )"
         return out
+
+    def isContext(self):
+        result = False
+        for expr in self.JL:
+            if expr is None:
+                return True
+            else:
+                result = expr.isContext()
+                if result:
+                    return result
+
 
 class JBinary(JExpr):
     def __init__(self, op, l, r):
@@ -186,7 +221,6 @@ class JBinary(JExpr):
         return outString
 
 
-
 """
 Converts strings into SExprs
 will remove opening ( from string and assumes
@@ -206,15 +240,16 @@ class SExpr(list):
             next = listSE[0]
             listSE.pop(0)
             if next == "(":
-                #New Function, need to recurse for new SExpr
+                # New Function, need to recurse for new SExpr
                 self.append(SExpr(listSE))
             elif next == ")":
-                #Function Complete, return new null-terminated SExpr
+                # Function Complete, return new null-terminated SExpr
                 self.append(None)
                 return
             else:
                 self.append(next)
         self.append(None)
+
 
 """
 Removes the operator from the start of the SExpr
@@ -236,7 +271,8 @@ def desugar(se) -> JExpr:
     jexprs = mkList(se, op)
     return JApp(jexprs)
 
-#desugar helper functions
+# desugar helper functions
+
 
 def fixdesugar(se):
     if se == "True":
@@ -245,12 +281,14 @@ def fixdesugar(se):
         return JBool(False)
     return JInt(int(se))
 
-def mkList(se, start = None):
+
+def mkList(se, start=None):
     l = list()
     if start is not None:
         l.append(start)
     for exp in se[1:]:
-        if exp is None: break
+        if exp is None:
+            break
         jexpr = desugar(exp)
         l.append(jexpr)
     return l
@@ -260,3 +298,5 @@ def mkList(se, start = None):
 Using None to denote Holes in already existing data structures
 As None is not a valid JExpr, and should never appear in compilation
 """
+
+
