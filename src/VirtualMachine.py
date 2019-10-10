@@ -244,12 +244,26 @@ class JIf(JExpr):
                 return
             
     def findRedex(self):
+        eResult = None
+        for i, e in enumerate(self.JL):
+            if e.isVal():
+                continue
+            else:
+                temp = e.findRedex()
+                if temp is None:
+                    eResult = e
+                else:
+                    eResult = temp
+                break
+        return eResult
+        """
         if self.JL[0].isVal():
             return None
         else:
             e = self.JL[0]
             self.JL[0] = None
             return e
+        """
 
 class JBinary(JExpr):
     def __init__(self, op, l, r):
