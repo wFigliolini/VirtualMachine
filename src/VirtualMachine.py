@@ -202,7 +202,7 @@ class JIf(JExpr):
             return self.JL[2].run()
 
     def strOut(self):
-        out = "( If " + self.JC.strOut() + " " + self.JT.strOut() + " " + self.JF.strOut() + " )"
+        out = "( If " + self.JL[0] + " " + self.JL[1] + " " + self.JL[2] + " )"
         return out
 
     def isContext(self):
