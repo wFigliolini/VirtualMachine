@@ -25,6 +25,12 @@ class JExpr(object, metaclass=abc.ABCMeta):
     def isContext(self):
         return False
 
+    def plug(self, je):
+        raise NotImplemented()
+
+    def isVal(self):
+        return False
+
 
 class JUnit(JExpr, metaclass=abc.ABCMeta):
     def __init__(self, val):
@@ -40,6 +46,12 @@ class JUnit(JExpr, metaclass=abc.ABCMeta):
 
     def run(self):
         return self
+
+    def plug(self):
+        raise Exception("Plug should never be called on Unit")
+
+    def isVal(self):
+        return True
 
 
 class JInt(JUnit):
@@ -168,6 +180,15 @@ class JApp(JExpr):
                 if result:
                     return result
 
+    def plug(self, je):
+        for i, e in enumerate(self.JL):
+            if e is None:
+                self.JL[i] = je
+                return
+            elif e.isContext():
+                e.plug(je)
+                return
+
 
 class JIf(JExpr):
     def __init__(self, JL):
@@ -193,6 +214,15 @@ class JIf(JExpr):
                 result = expr.isContext()
                 if result:
                     return result
+
+    def plug(self, je):
+        for i, e in enumerate(self.JL):
+            if e is None:
+                self.JL[i] = je
+                return
+            elif e.isContext():
+                e.plug(je)
+                return
 
 
 class JBinary(JExpr):
