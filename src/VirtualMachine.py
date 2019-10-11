@@ -34,6 +34,10 @@ class JExpr(object, metaclass=abc.ABCMeta):
     def findRedex(self):
         raise NotImplemented()
 
+    def tiny(self):
+        raise NotImplemented()
+
+
 class JUnit(JExpr, metaclass=abc.ABCMeta):
     def __init__(self, val):
         if isinstance(val, int):
@@ -57,6 +61,10 @@ class JUnit(JExpr, metaclass=abc.ABCMeta):
 
     def findRedex(self):
         raise Exception("Units are not valid Redexes")
+    
+    def tiny(self):
+        raise Exception("Tiny sahould not be called on Unit")
+
 
 class JInt(JUnit):
     pass
@@ -170,7 +178,8 @@ class JApp(JExpr):
         for arg in self.JL:
             if isinstance(arg, str):
                 out = out + arg + " "
-            out += arg.strOut()
+                continue
+            out = out + arg.strOut() + " "
         out += " )"
         return out
 
@@ -179,6 +188,8 @@ class JApp(JExpr):
         for expr in self.JL:
             if expr is None:
                 return True
+            elif expr in Prims:
+                continue
             else:
                 result = expr.isContext()
                 if result:
@@ -189,23 +200,27 @@ class JApp(JExpr):
             if e is None:
                 self.JL[i] = je
                 return
+            elif e in Prims:
+                continue
             elif e.isContext():
                 e.plug(je)
                 return
 
     def findRedex(self):
-        eResult = None
+        eResult = self
         for i, e in enumerate(self.JL):
-            if e.isVal():
+            if e in Prims:
+                continue
+            elif e.isVal():
                 continue
             else:
-                temp = e.findRedex()
-                if temp is None:
-                    eResult = e
-                else:
-                    eResult = temp
+                eResult = e.findRedex()
+                self.JL[i] = None
                 break
         return eResult
+
+    def tiny(self):
+        return self.run()
 
 
 class JIf(JExpr):
@@ -220,7 +235,7 @@ class JIf(JExpr):
             return self.JL[2].run()
 
     def strOut(self):
-        out = "( If " + self.JL[0] + " " + self.JL[1] + " " + self.JL[2] + " )"
+        out = "( If " + self.JL[0].strOut() + " " + self.JL[1].strOut() + " " + self.JL[2].strOut() + " )"
         return out
 
     def isContext(self):
@@ -242,28 +257,21 @@ class JIf(JExpr):
             elif e.isContext():
                 e.plug(je)
                 return
-            
+
     def findRedex(self):
-        eResult = None
-        for i, e in enumerate(self.JL):
-            if e.isVal():
-                continue
-            else:
-                temp = e.findRedex()
-                if temp is None:
-                    eResult = e
-                else:
-                    eResult = temp
-                break
-        return eResult
-        """
         if self.JL[0].isVal():
-            return None
+            return self
         else:
             e = self.JL[0]
             self.JL[0] = None
             return e
-        """
+
+    def tiny(self):
+        if self.JL[0].val:
+            return self.JL[1]
+        else:
+            return self.JL[2]
+
 
 class JBinary(JExpr):
     def __init__(self, op, l, r):
@@ -370,3 +378,14 @@ As None is not a valid JExpr, and should never appear in compilation
 """
 
 
+# Small step interpreter functions
+def small(je):
+    e = je.findRedex()
+    e = e.tiny()
+    je.plug(e)
+    return je
+
+def large(je):
+    while not je.isVal():
+        je = small(je)
+    return je
