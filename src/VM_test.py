@@ -42,7 +42,7 @@ def test_4():
 
 
 def test_5():
-    testString = "( * ( * 5 10 ) ( + 20 15 )"
+    testString = "( * ( * 5 10 ) ( + 20 15 ) )"
     testfunc(testString, 1750)
 
 
@@ -162,5 +162,6 @@ def testfunc(input,output):
     sexpr = VM.SExpr(input)
     print(sexpr)
     testProg = VM.desugar(sexpr)
-    actual = testProg.run()
-    assert actual.val == output
+    output = testProg.run()
+    actual = VM.large(testProg)
+    assert actual.val == output.val
