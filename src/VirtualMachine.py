@@ -196,7 +196,7 @@ class JApp(JExpr):
         self.JL = JL
 
     def run(self):
-        if self.JL[0] in Prims:
+        if isinstance(self.JL[0], JPrim):
             op = self.JL[0].run()
             JL = self.JL
             result = op(JL)
@@ -284,38 +284,23 @@ class JIf(JExpr):
         return out
 
     def isContext(self):
-        result = False
-        for expr in self.JL:
-            if expr is None:
-                return True
-            else:
-                result = expr.isContext()
-                if result:
-                    break
-        return result
+        return self.JL[0] is None
 
     def plug(self, je):
-        for i, e in enumerate(self.JL):
-            if e is None:
-                self.JL[i] = je
-                return
-            elif e.isContext():
-                e.plug(je)
-                return
+        if self.JL[0] is None:
+            self.JL[0] = je
+        else:
+            self.JL[0].plug(je)
 
     def findRedex(self):
-        result = None
-        for i, e in enumerate(self.JL):
-            if e.isVal():
-                continue
-            elif e.isRunnable():
-                result = e
-                self.JL[i] = None
-                return result
-            else:
-                result = e.findRedex()
-                return result
-        
+        if self.JL[0].isRunnable():
+            result = self.JL[0]
+            self.JL[0] = None
+            return result
+        else:
+            result = self.JL[0].findRedex()
+            return result
+
 
     def tiny(self):
         if self.JL[0].val:
@@ -324,13 +309,7 @@ class JIf(JExpr):
             return self.JL[2]
 
     def isRunnable(self):
-        result = True
-        for expr in self.JL:
-            if not expr.isVal():
-                result = False
-                break
-        return result
-        #return self.JL[0].isVal()
+        return self.JL[0].isVal()
 
 class JBinary(JExpr):
     def __init__(self, op, l, r):
@@ -439,9 +418,9 @@ As None is not a valid JExpr, and should never appear in compilation
 
 # Small step interpreter functions
 def small(je):
-    e = je.findRedex()
-    if e is None:
+    if je.isRunnable():
         return je.tiny()
+    e = je.findRedex()
     e = e.tiny()
     je.plug(e)
     return je
