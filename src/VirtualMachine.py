@@ -39,6 +39,18 @@ class JExpr(object, metaclass=abc.ABCMeta):
 
     def isRunnable(self):
         return True
+    
+    def getContext(self):
+        raise NotImplemented()
+
+    def containsNone(self):
+        return False
+    
+    def moveContext(self, expr):
+        raise NotImplemented()
+    
+    def createContext(self):
+        raise NotImplemented()
 
 class JUnit(JExpr, metaclass=abc.ABCMeta):
     def __init__(self, val):
@@ -69,6 +81,16 @@ class JUnit(JExpr, metaclass=abc.ABCMeta):
     
     def isRunnable(self):
         raise Exception("isRunnable should not be called on Unit")
+    
+    def getContext(self):
+        raise Exception("getContext should not be called on Unit")
+    
+    def moveContext(self, expr):
+        raise Exception("moveContext should not be called on Unit")
+    
+    def createContext(self, expr):
+        raise Exception("createContext should not be called on Prim")
+
 
 class JInt(JUnit):
     pass
@@ -76,6 +98,7 @@ class JInt(JUnit):
 
 class JBool(JUnit):
     pass
+
 
 class JPrim(JExpr):
     def __init__(self, prim):
@@ -101,6 +124,15 @@ class JPrim(JExpr):
     
     def isRunnable(self):
         raise Exception("isRunnable should not be called on Prim")
+
+    def getContext(self):
+        raise Exception("getContext should not be called on Prim")
+    
+    def moveContext(self, expr):
+        raise Exception("moveContext should not be called on Prim")
+    
+    def createContext(self, expr):
+        raise Exception("createContext should not be called on Prim")
 
 
 def Add(args: list):
@@ -266,7 +298,25 @@ class JApp(JExpr):
                 result = False
                 break
         return result
+    def getContext(self):
+        for i, e in enumerate(self.JL):
+            if e.containsNone():
+                result = e
+                self.JL[i] = None
+                return result
+            elif e.isContext():
+                result = e.getContext()
+                return result
+        raise Exception("getContext called on non-context App")
 
+    def containsNone(self):
+        return not (self.JL.count(None) == 0)
+    
+    def moveContext(self, expr):
+        pass
+    
+    def createContext(self):
+        pass
 
 class JIf(JExpr):
     def __init__(self, JL):
@@ -284,7 +334,10 @@ class JIf(JExpr):
         return out
 
     def isContext(self):
-        return self.JL[0] is None
+        if self.JL[0] is None:
+            return True
+        else:
+            return self.JL[0].isContext()
 
     def plug(self, je):
         if self.JL[0] is None:
@@ -301,7 +354,6 @@ class JIf(JExpr):
             result = self.JL[0].findRedex()
             return result
 
-
     def tiny(self):
         if self.JL[0].val:
             return self.JL[1]
@@ -310,6 +362,26 @@ class JIf(JExpr):
 
     def isRunnable(self):
         return self.JL[0].isVal()
+    
+    def getContext(self):
+        if self.JL[0].containsNone():
+            result  = self.JL[0]
+            self.JL[0] = None
+            return result
+        elif self.JL[0].isContext():
+            result = self.JL[0].getContext()
+            return result
+        else:
+            raise Exception("getContext called on non-context If")
+    
+    def containsNone(self):
+        return self.JL[0] is None
+    
+    def moveContext(self, expr):
+        pass
+    
+    def createContext(self):
+        pass
 
 class JBinary(JExpr):
     def __init__(self, op, l, r):
@@ -429,3 +501,59 @@ def large(je):
     while not je.isVal():
         je = small(je)
     return je
+
+
+def inject(je):
+    return (je, None)
+
+
+def extract(st):
+    return st[0]
+
+
+def CC0(st):
+    #variables for tracking the state of the machine
+    exp = st[0]
+    con = st[1]
+    
+    #auxilary functions for context manipulation
+    def getContext():
+        if con.containsNone():
+            newCon = con
+            con = None
+            return newCon
+        else:
+            newCon = con.getContext()
+            return newCon
+
+    def addContext(expr):
+        if con is None:
+            con = expr
+        else:
+            con.plug(expr)
+    
+    while True:
+        if con is None:
+            #final state
+            if exp.isVal():
+                return (exp,con)
+            #intial state is the same for both Apps and Ifs
+            if isinstance(exp, JApp) or isinstance(exp, JIf):
+                temp = exp.JL[0]
+                exp.JL[0] = None
+                addContext(exp)
+        else:
+            if exp.isVal():
+                currCon = getContext() 
+                exp = currCon.moveContext(exp)
+                addContext(currCon)
+            else:
+                temp = exp.createContext()
+                addContext(exp)
+                exp = temp
+        if (not exp.isVal()) and exp.isRunnable():
+            exp = exp.tiny()
+
+
+def CCRun(je):
+    return extract(CC0(inject(je)))
