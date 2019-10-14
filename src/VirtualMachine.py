@@ -37,6 +37,8 @@ class JExpr(object, metaclass=abc.ABCMeta):
     def tiny(self):
         raise NotImplemented()
 
+    def isRunnable(self):
+        return True
 
 class JUnit(JExpr, metaclass=abc.ABCMeta):
     def __init__(self, val):
@@ -63,8 +65,10 @@ class JUnit(JExpr, metaclass=abc.ABCMeta):
         raise Exception("Units are not valid Redexes")
     
     def tiny(self):
-        raise Exception("Tiny sahould not be called on Unit")
-
+        raise Exception("Tiny should not be called on Unit")
+    
+    def isRunnable(self):
+        raise Exception("isRunnable should not be called on Unit")
 
 class JInt(JUnit):
     pass
@@ -73,11 +77,37 @@ class JInt(JUnit):
 class JBool(JUnit):
     pass
 
+class JPrim(JExpr):
+    def __init__(self, prim):
+        self.prim = prim
+        
+    def strOut(self):
+        return self.prim
+    
+    def run(self):
+        return PrimFunc[self.prim]
+    
+    def plug(self):
+        raise Exception("Plug should never be called on Prim")
+
+    def isVal(self):
+        return True
+
+    def findRedex(self):
+        raise Exception("Prims are not valid Redexes")
+    
+    def tiny(self):
+        raise Exception("Tiny should not be called on Prim")
+    
+    def isRunnable(self):
+        raise Exception("isRunnable should not be called on Prim")
+
 
 def Add(args: list):
     while len(args) < 3:
-        args.append(JInt(Identities[args[0]]))
+        args.append(JInt(Identities[args[0].prim]))
     result = 0
+    print(args)
     for arg in args[1:]:
         result += arg.run().val
     return JInt(result)
@@ -85,7 +115,7 @@ def Add(args: list):
 
 def Sub(args: list):
     while len(args) < 3:
-        args.insert(1, JInt(Identities[args[0]]))
+        args.insert(1, JInt(Identities[args[0].prim]))
     result = args[1].run().val
     for arg in args[2:]:
         result -= arg.run().val
@@ -94,8 +124,9 @@ def Sub(args: list):
 
 def Mult(args: list):
     while len(args) < 3:
-        args.append(JInt(Identities[args[0]]))
+        args.append(JInt(Identities[args[0].prim]))
     result = 1
+    print(args)
     for arg in args[1:]:
         result *= arg.run().val
     return JInt(result)
@@ -103,7 +134,7 @@ def Mult(args: list):
 
 def Div(args: list):
     while len(args) < 3:
-        args.insert(1, JInt(Identities[args[0]]))
+        args.insert(1, JInt(Identities[args[0].prim]))
     result = args[1].run().val
     for arg in args[2:]:
         result /= arg.run().val
@@ -166,9 +197,9 @@ class JApp(JExpr):
 
     def run(self):
         if self.JL[0] in Prims:
-            op = self.JL[0]
+            op = self.JL[0].run()
             JL = self.JL
-            result = PrimFunc[op](JL)
+            result = op(JL)
             return result
         else:
             return self.JL[0]
@@ -207,20 +238,34 @@ class JApp(JExpr):
                 return
 
     def findRedex(self):
-        eResult = self
+        result = None
         for i, e in enumerate(self.JL):
-            if e in Prims:
+            if e.isVal():
                 continue
-            elif e.isVal():
-                continue
-            else:
-                eResult = e.findRedex()
+            elif e.isRunnable():
+                result = e
                 self.JL[i] = None
-                break
-        return eResult
+                return result
+            else:
+                result = e.findRedex()
+                return result
 
     def tiny(self):
-        return self.run()
+        if isinstance(self.JL[0], JPrim):
+            op = self.JL[0].run()
+            JL = self.JL
+            result = op(JL)
+            return result
+        else:
+            return self.JL[0]        
+    
+    def isRunnable(self):
+        result = True
+        for expr in self.JL:
+            if not expr.isVal():
+                result = False
+                break
+        return result
 
 
 class JIf(JExpr):
@@ -259,12 +304,18 @@ class JIf(JExpr):
                 return
 
     def findRedex(self):
-        if self.JL[0].isVal():
-            return self
-        else:
-            e = self.JL[0]
-            self.JL[0] = None
-            return e
+        result = None
+        for i, e in enumerate(self.JL):
+            if e.isVal():
+                continue
+            elif e.isRunnable():
+                result = e
+                self.JL[i] = None
+                return result
+            else:
+                result = e.findRedex()
+                return result
+        
 
     def tiny(self):
         if self.JL[0].val:
@@ -272,6 +323,14 @@ class JIf(JExpr):
         else:
             return self.JL[2]
 
+    def isRunnable(self):
+        result = True
+        for expr in self.JL:
+            if not expr.isVal():
+                result = False
+                break
+        return result
+        #return self.JL[0].isVal()
 
 class JBinary(JExpr):
     def __init__(self, op, l, r):
@@ -346,7 +405,7 @@ def desugar(se) -> JExpr:
         return JIf(temp[:3])
     if op not in Prims:
         return fixdesugar(se[0])
-    jexprs = mkList(se, op)
+    jexprs = mkList(se, JPrim(op))
     return JApp(jexprs)
 
 # desugar helper functions
@@ -381,6 +440,8 @@ As None is not a valid JExpr, and should never appear in compilation
 # Small step interpreter functions
 def small(je):
     e = je.findRedex()
+    if e is None:
+        return je.tiny()
     e = e.tiny()
     je.plug(e)
     return je
