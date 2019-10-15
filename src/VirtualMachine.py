@@ -7,7 +7,8 @@ import string
 from collections import deque
 
 
-Identities = {"+" : 0, "*" : 1, "-" : 0, "/" : 1, "<" : 0, "<=" : 0, "==" : 0, ">=" : 0, ">" : 0}
+Identities = {"+": 0, "*": 1, "-": 0, "/": 1, "<": 0, "<=": 0, "==": 0,
+              ">=": 0, ">": 0}
 Prims = ["+", "-", "*", "/", "<", "<=", "==", ">=", ">"]
 
 
@@ -39,18 +40,19 @@ class JExpr(object, metaclass=abc.ABCMeta):
 
     def isRunnable(self):
         return True
-    
+
     def getContext(self):
         raise NotImplemented()
 
     def containsNone(self):
         return False
-    
+
     def moveContext(self, expr):
         raise NotImplemented()
-    
+
     def createContext(self):
         raise NotImplemented()
+
 
 class JUnit(JExpr, metaclass=abc.ABCMeta):
     def __init__(self, val):
@@ -67,7 +69,7 @@ class JUnit(JExpr, metaclass=abc.ABCMeta):
     def run(self):
         return self
 
-    def plug(self):
+    def plug(self, je):
         raise Exception("Plug should never be called on Unit")
 
     def isVal(self):
@@ -75,19 +77,19 @@ class JUnit(JExpr, metaclass=abc.ABCMeta):
 
     def findRedex(self):
         raise Exception("Units are not valid Redexes")
-    
+
     def tiny(self):
         raise Exception("Tiny should not be called on Unit")
-    
+
     def isRunnable(self):
         raise Exception("isRunnable should not be called on Unit")
-    
+
     def getContext(self):
         raise Exception("getContext should not be called on Unit")
-    
+
     def moveContext(self, expr):
         raise Exception("moveContext should not be called on Unit")
-    
+
     def createContext(self, expr):
         raise Exception("createContext should not be called on Prim")
 
@@ -103,14 +105,14 @@ class JBool(JUnit):
 class JPrim(JExpr):
     def __init__(self, prim):
         self.prim = prim
-        
+
     def strOut(self):
         return self.prim
-    
+
     def run(self):
         return PrimFunc[self.prim]
-    
-    def plug(self):
+
+    def plug(self, je):
         raise Exception("Plug should never be called on Prim")
 
     def isVal(self):
@@ -118,19 +120,19 @@ class JPrim(JExpr):
 
     def findRedex(self):
         raise Exception("Prims are not valid Redexes")
-    
+
     def tiny(self):
         raise Exception("Tiny should not be called on Prim")
-    
+
     def isRunnable(self):
         raise Exception("isRunnable should not be called on Prim")
 
     def getContext(self):
         raise Exception("getContext should not be called on Prim")
-    
+
     def moveContext(self, expr):
         raise Exception("moveContext should not be called on Prim")
-    
+
     def createContext(self, expr):
         raise Exception("createContext should not be called on Prim")
 
@@ -139,7 +141,6 @@ def Add(args: list):
     while len(args) < 3:
         args.append(JInt(Identities[args[0].prim]))
     result = 0
-    print(args)
     for arg in args[1:]:
         result += arg.run().val
     return JInt(result)
@@ -174,7 +175,6 @@ def Div(args: list):
 
 
 def LT(args: list):
-    print(args)
     while len(args) < 3:
         args.append(0)
     lnum = args[1].run()
@@ -193,7 +193,6 @@ def LTE(args: list):
 
 
 def EQ(args: list):
-    print(args)
     while len(args) < 3:
         args.append(0)
     lnum = args[1].run()
@@ -220,7 +219,8 @@ def GT(args: list):
     return JBool(result)
 
 
-PrimFunc = {"+": Add, "-": Sub, "*": Mult, "/": Div, "<=": LTE, ">=" : GTE, "<": LT,  "==" : EQ,  ">" : GT }
+PrimFunc = {"+": Add, "-": Sub, "*": Mult, "/": Div, "<=": LTE, ">=": GTE,
+            "<": LT,  "==": EQ,  ">": GT}
 
 
 class JApp(JExpr):
@@ -289,8 +289,8 @@ class JApp(JExpr):
             result = op(JL)
             return result
         else:
-            return self.JL[0]        
-    
+            return self.JL[0]
+
     def isRunnable(self):
         result = True
         for expr in self.JL:
@@ -298,8 +298,11 @@ class JApp(JExpr):
                 result = False
                 break
         return result
+
     def getContext(self):
         for i, e in enumerate(self.JL):
+            if e.isVal():
+                continue
             if e.containsNone():
                 result = e
                 self.JL[i] = None
@@ -311,12 +314,22 @@ class JApp(JExpr):
 
     def containsNone(self):
         return not (self.JL.count(None) == 0)
-    
+
     def moveContext(self, expr):
-        pass
-    
+        i = self.JL.index(None)
+        self.JL[i] = expr
+        if (i+1) == len(self.JL):
+            result = self.tiny()
+        else:
+            result = self.JL[i+1]
+            self.JL[i+1] = None
+        return result
+
     def createContext(self):
-        pass
+        expr = self.JL[0]
+        self.JL[0] = None
+        return expr
+
 
 class JIf(JExpr):
     def __init__(self, JL):
@@ -362,10 +375,10 @@ class JIf(JExpr):
 
     def isRunnable(self):
         return self.JL[0].isVal()
-    
+
     def getContext(self):
         if self.JL[0].containsNone():
-            result  = self.JL[0]
+            result = self.JL[0]
             self.JL[0] = None
             return result
         elif self.JL[0].isContext():
@@ -373,15 +386,20 @@ class JIf(JExpr):
             return result
         else:
             raise Exception("getContext called on non-context If")
-    
+
     def containsNone(self):
         return self.JL[0] is None
-    
+
     def moveContext(self, expr):
-        pass
-    
+        self.JL[0] = expr
+        result = self.tiny()
+        return result
+
     def createContext(self):
-        pass
+        expr = self.JL[0]
+        self.JL[0] = None
+        return expr
+
 
 class JBinary(JExpr):
     def __init__(self, op, l, r):
@@ -497,6 +515,7 @@ def small(je):
     je.plug(e)
     return je
 
+
 def large(je):
     while not je.isVal():
         je = small(je)
@@ -511,48 +530,62 @@ def extract(st):
     return st[0]
 
 
+def getContext(con):
+    if con.containsNone():
+        newCon = con
+        con = None
+        return newCon
+    else:
+        newCon = con.getContext()
+        return newCon
+
+
+def addContext(expr, con):
+    if con is None:
+        con = expr
+    else:
+        con.plug(expr)
+    return con
+
+
+def moveContext(expr, con):
+    resultExpr = con.moveContext(expr)
+    if not con.isContext():
+        con = None
+    return (resultExpr, con)
+
+
 def CC0(st):
-    #variables for tracking the state of the machine
+    # variables for tracking the state of the machine
     exp = st[0]
     con = st[1]
-    
-    #auxilary functions for context manipulation
-    def getContext():
-        if con.containsNone():
-            newCon = con
-            con = None
-            return newCon
-        else:
-            newCon = con.getContext()
-            return newCon
 
-    def addContext(expr):
-        if con is None:
-            con = expr
-        else:
-            con.plug(expr)
-    
     while True:
+        print("Current Exp: ", exp.strOut())
         if con is None:
-            #final state
+            print("Current Con: None")
+        else:
+            print("Current Con: ", con.JL)
+        if con is None:
+            # final state
             if exp.isVal():
-                return (exp,con)
-            #intial state is the same for both Apps and Ifs
-            if isinstance(exp, JApp) or isinstance(exp, JIf):
+                return (exp, con)
+            # intial state is the same for both Apps and Ifs
+            else:
                 temp = exp.JL[0]
                 exp.JL[0] = None
-                addContext(exp)
+                con = addContext(exp, con)
+                exp = temp
         else:
             if exp.isVal():
-                currCon = getContext() 
-                exp = currCon.moveContext(exp)
-                addContext(currCon)
+                currCon = getContext(con)
+                exp, currCon = moveContext(exp, currCon)
+                if currCon is not None:
+                    con = addContext(currCon, con)
             else:
                 temp = exp.createContext()
-                addContext(exp)
+                con = addContext(exp, con)
                 exp = temp
-        if (not exp.isVal()) and exp.isRunnable():
-            exp = exp.tiny()
 
 
 def CCRun(je):
