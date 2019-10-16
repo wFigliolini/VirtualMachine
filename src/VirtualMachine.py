@@ -159,7 +159,6 @@ def Mult(args: list):
     while len(args) < 3:
         args.append(JInt(Identities[args[0].prim]))
     result = 1
-    print(args)
     for arg in args[1:]:
         result *= arg.run().val
     return JInt(result)
@@ -248,11 +247,9 @@ class JApp(JExpr):
 
     def isContext(self):
         result = False
-        for expr in self.JL:
+        for i, expr in enumerate(self.JL):
             if expr is None:
                 return True
-            elif expr in Prims:
-                continue
             else:
                 result = expr.isContext()
                 if result:
@@ -561,11 +558,6 @@ def CC0(st):
     con = st[1]
 
     while True:
-        print("Current Exp: ", exp.strOut())
-        if con is None:
-            print("Current Con: None")
-        else:
-            print("Current Con: ", con.JL)
         if con is None:
             # final state
             if exp.isVal():
@@ -580,8 +572,10 @@ def CC0(st):
             if exp.isVal():
                 currCon = getContext(con)
                 exp, currCon = moveContext(exp, currCon)
-                if currCon is not None:
+                if (currCon is not None) and con != currCon:
                     con = addContext(currCon, con)
+                if not con.isContext():
+                    con = None
             else:
                 temp = exp.createContext()
                 con = addContext(exp, con)
