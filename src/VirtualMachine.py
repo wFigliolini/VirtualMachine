@@ -4,6 +4,7 @@ Main file, containing J language defitions and High Level Functionallity
 
 import abc
 import string
+import os
 from collections import deque
 
 
@@ -584,3 +585,32 @@ def CC0(st):
 
 def CCRun(je):
     return extract(CC0(inject(je)))
+
+
+def makeHeader():
+    headerList = ["enum tags { NUM, BOOL, PRIM, IF, APP, KRET, KIF, KAPP };\n"]
+    headerList = ["enum prims { ADD, SUB, MULT, DIV, LT, LTE, EQ, GTE, GT };\n"]
+    headerList.append("struct expr{\n")
+    headerList.append("\t enum tags tag; } ;\n")
+    headerList.append("struct if{\n")
+    headerList.append("\t expr m\n")
+    headerList.append("\t expr *ec, *et, *ef; };\n")
+    headerList.append("struct app{\n")
+    headerList.append("\t expr m;\n")
+    headerList.append("\t expr *f, *args; };\n")
+    headerList.append("struct num{\n")
+    headerList.append("\t expr m;\n")
+    headerList.append("\t int n; };\n")
+    headerList.append("struct bool{\n")
+    headerList.append("\t expr m;\n")
+    headerList.append("\t int n; };\n")
+    headerList.append("struct prim{\n")
+    headerList.append("\t expr m;\n")
+    headerList.append("\t enum prims prim; };\n")
+    headerF = open(".J_Header.h", "w")
+    headerF.writelines(headerList)
+    return
+
+def cleanup():
+    os.remove(".J_Header.h")
+    
