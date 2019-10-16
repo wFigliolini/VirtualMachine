@@ -11,6 +11,7 @@ from collections import deque
 Identities = {"+": 0, "*": 1, "-": 0, "/": 1, "<": 0, "<=": 0, "==": 0,
               ">=": 0, ">": 0}
 Prims = ["+", "-", "*", "/", "<", "<=", "==", ">=", ">"]
+PrimDict = {"+": "ADD", "-": "SUB", "*": "MULT", "/": "DIV", "<": "LT", "<=": "LTE", "==": "EQ", ">=": "GTE", ">": "GT"}
 
 
 class JExpr(object, metaclass=abc.ABCMeta):
@@ -54,6 +55,8 @@ class JExpr(object, metaclass=abc.ABCMeta):
     def createContext(self):
         raise NotImplemented()
 
+    def make(self, BodyList, depth):
+        raise NotImplemented()
 
 class JUnit(JExpr, metaclass=abc.ABCMeta):
     def __init__(self, val):
@@ -96,11 +99,23 @@ class JUnit(JExpr, metaclass=abc.ABCMeta):
 
 
 class JInt(JUnit):
-    pass
+    def make(self, BodyList, depth):
+        name = "x"+depth
+        BodyList.append("%s = malloc(sizeof(num));\n", name)
+        BodyList.append("%s->m.tag = NUM;\n", name)
+        BodyList.append("%s->c = %i;\n", name, self.val)
 
 
 class JBool(JUnit):
-    pass
+    def make(self, BodyList, depth):
+        name = "x"+depth
+        BodyList.append("%s = malloc(sizeof(bool));\n", name)
+        BodyList.append("%s->m.tag = BOOL;\n", name)
+        if self.val:
+            x = 1
+        else:
+            x = 0
+        BodyList.append("%s->n = %i;\n", name, x)
 
 
 class JPrim(JExpr):
@@ -136,6 +151,12 @@ class JPrim(JExpr):
 
     def createContext(self, expr):
         raise Exception("createContext should not be called on Prim")
+
+    def make(self, BodyList, depth):
+        name = "x"+depth
+        BodyList.append("%s = malloc(sizeof(prim));\n", name)
+        BodyList.append("%s->m.tag = PRIM;\n", name)
+        BodyList.append("%s->c = %s;\n", name, PrimDict[self.prim])
 
 
 def Add(args: list):
@@ -328,6 +349,19 @@ class JApp(JExpr):
         self.JL[0] = None
         return expr
 
+    def make(self, BodyList, depth):
+        name = "x"+depth
+        nextname = "x"+depth
+        BodyList.append("%s = malloc(sizeof(app));\n", name)
+        BodyList.append("%s->m.tag = APP;\n", name)
+        self.JL[0].make(BodyList, depth+1)
+        BodyList.append("%s->f = %s;\n", name, nextname)
+        lJL = len(self.JL)
+        BodyList.append("%s->args = malloc(%i*sizeof(expr*));\n", name, lJL)
+        for i, e in enumerate(self.JL[1:]):
+            e.make(BodyList, depth+1)
+            BodyList.append("%s->args[%i] = %s;\n", name, i-1, nextname)
+        BodyList.append("%s->args[%i] = NULL;\n", name, lJL)
 
 class JIf(JExpr):
     def __init__(self, JL):
@@ -397,6 +431,18 @@ class JIf(JExpr):
         expr = self.JL[0]
         self.JL[0] = None
         return expr
+
+    def make(self, BodyList, depth):
+        name = "x"+depth
+        nextname = "x"+(depth+1)
+        BodyList.append("%s = malloc(sizeof(jif));\n", name)
+        BodyList.append("%s->m.tag = IF;\n", name)
+        self.JL[0].make(BodyList, depth+1)
+        BodyList.append("%s->c = %s;\n", name, nextname)
+        self.JL[1].make(BodyList, depth+1)
+        BodyList.append("%s->t = %s;\n", name, nextname)
+        self.JL[2].make(BodyList, depth+1)
+        BodyList.append("%s->f = %s;\n", name, nextname)
 
 
 class JBinary(JExpr):
@@ -587,12 +633,12 @@ def CCRun(je):
     return extract(CC0(inject(je)))
 
 
-def makeHeader():
+def makeHeader(file):
     headerList = ["enum tags { NUM, BOOL, PRIM, IF, APP, KRET, KIF, KAPP };\n"]
-    headerList = ["enum prims { ADD, SUB, MULT, DIV, LT, LTE, EQ, GTE, GT };\n"]
+    headerList.append("enum prims { ADD, SUB, MULT, DIV, LT, LTE, EQ, GTE, GT };\n")
     headerList.append("struct expr{\n")
     headerList.append("\t enum tags tag; } ;\n")
-    headerList.append("struct if{\n")
+    headerList.append("struct jif{\n")
     headerList.append("\t expr m\n")
     headerList.append("\t expr *ec, *et, *ef; };\n")
     headerList.append("struct app{\n")
@@ -607,10 +653,9 @@ def makeHeader():
     headerList.append("struct prim{\n")
     headerList.append("\t expr m;\n")
     headerList.append("\t enum prims prim; };\n")
-    headerF = open(".J_Header.h", "w")
-    headerF.writelines(headerList)
-    return
+    file.writelines(headerList)
 
-def cleanup():
-    os.remove(".J_Header.h")
-    
+def makeBody(file, je):
+    BodyList = []
+    e.make(BodyList, 0)
+    file.writelines(BodyList)
