@@ -72,7 +72,7 @@ def test_10():
 
 
 def test_11():
-    testString = "( + 5 10 15 )" 
+    testString = "( + 5 10 15 )"
     testfunc(testString, 30)
 #Bool Base Cases
 def test_J1_0():
@@ -158,10 +158,16 @@ def test_unit_Wrong_Arg():
     with pytest.raises(TypeError):
         VM.JInt('x')
 
+
+def test_print():
+    testString = "( If ( == 6 6 ) ( 5 ) ( 6 ) )" 
+    sexpr = VM.SExpr(testString)
+    testProg = VM.desugar(sexpr)
+    VM.print(testProg)
+
 def testfunc(input,output):
     sexpr = VM.SExpr(input)
-    print(sexpr)
     testProg = VM.desugar(sexpr)
     output = testProg.run()
-    actual = VM.large(testProg)
+    actual = VM.CCRun(testProg)
     assert actual.val == output.val
