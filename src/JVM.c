@@ -1,11 +1,62 @@
 #include "JVM.h"
+
+kif *new_kif(void* t, void* f, void* k){
+	kif *result = (kif*) malloc(sizeof(kif));
+	result->m.tag = KIF;
+	result->t = t;
+	result->f = f;
+	result->k = k;
+	return result;
+}
+kapp *new_kapp(void *f, exprlist* args, void* k){
+	kapp *result = (kapp*) malloc(sizeof(kif));
+	result->m.tag = KAPP;
+	result->v = (exprlist*) malloc(sizeof(exprlist));
+	result->v->e = f; 
+	result->v->l = NULL; 
+	result->e = args;
+	result->k = k;
+	return result;
+}
+
+num* valPop(exprlist** l){
+    num* result = (num*) (*l)->e;
+    void* temp = *l;
+    (*l) = (*l)->l;
+    free(temp);
+    return result;
+}
+void valPush(exprlist*l, void* e){
+    while(l->l!=NULL){
+        l = l->l;
+    }
+    exprlist* newnode = (exprlist*) malloc(sizeof(exprlist));
+    newnode->e = e;
+    newnode->l = NULL;
+}
+
+num* new_num(int n){
+    num* result = (num*) malloc(sizeof(num));
+    result->m.tag=NUM;
+    result->n = n;
+    return result;
+}
+bool* new_bool(int n){
+    bool* result = (bool*) malloc(sizeof(bool));
+    result->m.tag=BOOL;
+    result->n = n;
+    return result;
+}
+
 void* VM(void* s){
 	void *e = s;
 	void *k = NULL;
 	void *temp = NULL;
+    printf("Starting VM\n");
 	while(1){
-		app* gt = (app*) e; 
+		app* gt = (app*) e;
 		enum tags currTag = gt->m.tag; 
+        printf("Current e is %i\n", currTag);
 		if( currTag == IF ){
 			jif* eif = (jif*) e;
 			k = new_kif(eif->t, eif->f, k);
@@ -31,6 +82,7 @@ void* VM(void* s){
 		}
 		kapp* gkt = (kapp*) k; 
 		enum tags kTag = gkt->m.tag; 
+        printf("Current k is %i\n", kTag);
 		if( kTag == KIF ){
 			bool* eb = (bool*) e;
 			kif* kif1 = (kif*) k;
@@ -69,7 +121,7 @@ void* VM(void* s){
                             numb = valPop(&(kapp2->v));
                             n+=numb->n;
                         }
-                        e = new_num(n)
+                        e = new_num(n);
                         break;
                     case SUB:
                         n = 0;
@@ -78,30 +130,101 @@ void* VM(void* s){
                             n -= numb->n;
                         }
                         else{
-                            
+                            n = numb->n;
+                            while(kapp2->v!=NULL){
+                                numb = valPop(&(kapp2->v));
+                                n-=numb->n;
+                            }
                         }
-                        e = new_num(n)
+                        e = new_num(n);
                         break;
                     case MULT:
-                        
+                        n = 1;
+                        while(kapp2->v!=NULL){
+                            numb = valPop(&(kapp2->v));
+                            n*=numb->n;
+                        }
+                        e = new_num(n);
                         break;
                     case DIV:
-                        
+                        n = 1;
+                        numb = valPop(&(kapp2->v));
+                        if(kapp2->v == NULL){
+                            n /= numb->n;
+                        }
+                        else{
+                            n = numb->n;
+                            while(kapp2->v!=NULL){
+                                numb = valPop(&(kapp2->v));
+                                n /=numb->n;
+                            }
+                        }
+                        e = new_num(n);
                         break;
                     case LT:
-                        
+                        n = 0;
+                        numb = valPop(&(kapp2->v));
+                        if(kapp2->v == NULL){
+                            n = n < numb->n;
+                        }
+                        else{
+                            n = numb->n;
+                            numb = valPop(&(kapp2->v));
+                            n = n <numb->n;
+                        }
+                        e = new_bool(n);
                         break;
                     case LTE:
-                        
+                        n = 0;
+                        numb = valPop(&(kapp2->v));
+                        if(kapp2->v == NULL){
+                            n = n <= numb->n;
+                        }
+                        else{
+                            n = numb->n;
+                            numb = valPop(&(kapp2->v));
+                            n = n <= numb->n;
+                        }
+                        e = new_bool(n);
                         break;
                     case EQ:
-                        
+                        n = 0;
+                        numb = valPop(&(kapp2->v));
+                        if(kapp2->v == NULL){
+                            n = n == numb->n;
+                        }
+                        else{
+                            n = numb->n;
+                            numb = valPop(&(kapp2->v));
+                            n = n == numb->n;
+                        }
+                        e = new_bool(n);
                         break;
                     case GTE:
-                        
+                        n = 0;
+                        numb = valPop(&(kapp2->v));
+                        if(kapp2->v == NULL){
+                            n = n >= numb->n;
+                        }
+                        else{
+                            n = numb->n;
+                            numb = valPop(&(kapp2->v));
+                            n = n >= numb->n;
+                        }
+                        e = new_bool(n);
                         break;
                     case GT:
-                        
+                        n = 0;
+                        numb = valPop(&(kapp2->v));
+                        if(kapp2->v == NULL){
+                            n = n > numb->n;
+                        }
+                        else{
+                            n = numb->n;
+                            numb = valPop(&(kapp2->v));
+                            n = n >numb->n;
+                        }
+                        e = new_bool(n);
                         break;
                 }
             }
