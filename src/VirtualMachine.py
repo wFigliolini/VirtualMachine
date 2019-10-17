@@ -351,17 +351,22 @@ class JApp(JExpr):
 
     def make(self, BodyList, depth):
         name = "x"+depth
-        nextname = "x"+depth
+        nextname = "x"+(depth+1)
+        tempname = "temp"+depth
         BodyList.append("%s = malloc(sizeof(app));\n", name)
         BodyList.append("%s->m.tag = APP;\n", name)
         self.JL[0].make(BodyList, depth+1)
         BodyList.append("%s->f = %s;\n", name, nextname)
-        lJL = len(self.JL)
-        BodyList.append("%s->args = malloc(%i*sizeof(expr*));\n", name, lJL)
+        BodyList.append("%s->args = malloc(sizeof(exprlist));\n", name)
+        BodyList.append("temp = %s->args;", name)
         for i, e in enumerate(self.JL[1:]):
             e.make(BodyList, depth+1)
-            BodyList.append("%s->args[%i] = %s;\n", name, i-1, nextname)
-        BodyList.append("%s->args[%i] = NULL;\n", name, lJL)
+            BodyList.append("%s->e = %s;\n", tempname, nextname)
+            if i+1 != len(self.JL):
+                BodyList.append("%s->l = malloc(sizeof(exprlist))", tempname)
+                BodyList.append("%s = %s->l", tempname)
+        BodyList.append("%s->l = NULL;\n", tempname)
+
 
 class JIf(JExpr):
     def __init__(self, JL):
@@ -638,6 +643,9 @@ def makeHeader(file):
     headerList.append("enum prims { ADD, SUB, MULT, DIV, LT, LTE, EQ, GTE, GT };\n")
     headerList.append("struct expr{\n")
     headerList.append("\t enum tags tag; } ;\n")
+    headerList.append("struct exprlist{\n")
+    headerList.append("\t expr* e;\n")
+    headerList.append("\t exprlist* l;\n")
     headerList.append("struct jif{\n")
     headerList.append("\t expr m\n")
     headerList.append("\t expr *c, *t, *f; };\n")
@@ -653,6 +661,14 @@ def makeHeader(file):
     headerList.append("struct prim{\n")
     headerList.append("\t expr m;\n")
     headerList.append("\t enum prims prim; };\n")
+    headerList.append("struct kif{ \n")
+    headerList.append("\t expr* t;\n")
+    headerList.append("\t expr* f;\n")
+    headerList.append("\t k* k; };\n")
+    headerList.append("struct kapp{ \n")
+    headerList.append("\t exprlist* v;\n")
+    headerList.append("\t exprlist* e;\n")
+    headerList.append("\t k* k; };\n")
     file.writelines(headerList)
 
 
