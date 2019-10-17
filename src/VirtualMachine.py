@@ -647,7 +647,7 @@ def CCRun(je):
 
 
 def makeBody(file, je):
-    BodyList = ["int main(int arg, char* argv[]){\n"]
+    BodyList = ["#include \"JVM.h\"\n","int main(int arg, char* argv[]){\n"]
     je.make(BodyList, genName())
     BodyList.append("void* e = x0;\n")
     BodyList.append("void* r = VM(e);\n")
@@ -668,13 +668,13 @@ def print(je):
 
 
 def CKrun(je):
-    fileout = open(".JVM.c", "w")
-    makeHeader(fileout)
-    makeMachine(fileout)
+    fileout = open(".JRun.c", "w")
     makeBody(fileout, je)
-    os.system("gcc .JVM.c")
+    os.system("gcc -o .JVM.c -c")
+    os.system("gcc -o .a.out .JRun.c JVM.o")
     result = subprocess.check_output("./a.out", shell=True)
     fileout.close()
-    os.remove(".JVM.c")
-    os.remove("a.out")
+    os.remove(".JRun.c")
+    os.remove(".JRun.o")
+    os.remove(".a.out")
     return result
