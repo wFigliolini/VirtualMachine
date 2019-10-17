@@ -640,7 +640,7 @@ def makeHeader(file):
     headerList.append("\t enum tags tag; } ;\n")
     headerList.append("struct jif{\n")
     headerList.append("\t expr m\n")
-    headerList.append("\t expr *ec, *et, *ef; };\n")
+    headerList.append("\t expr *c, *t, *f; };\n")
     headerList.append("struct app{\n")
     headerList.append("\t expr m;\n")
     headerList.append("\t expr *f, *args; };\n")
@@ -655,7 +655,13 @@ def makeHeader(file):
     headerList.append("\t enum prims prim; };\n")
     file.writelines(headerList)
 
+
 def makeBody(file, je):
-    BodyList = []
-    e.make(BodyList, 0)
+    BodyList = ["int main(int arg, char* argv[]){\n"]
+    je.make(BodyList, 0)
+    BodyList.append("Expr* e = x0;\n")
+    BodyList.append("result = VM(e);\n")
+    BodyList.append("printf(\"%%i\", result);\n")
+    BodyList.append("return 0;\n")
+    BodyList.append("}")
     file.writelines(BodyList)
