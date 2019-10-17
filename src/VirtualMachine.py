@@ -14,6 +14,15 @@ Prims = ["+", "-", "*", "/", "<", "<=", "==", ">=", ">"]
 PrimDict = {"+": "ADD", "-": "SUB", "*": "MULT", "/": "DIV", "<": "LT", "<=": "LTE", "==": "EQ", ">=": "GTE", ">": "GT"}
 
 
+def genName():
+    s = "x" + str(genName.i)
+    genName.i +=1
+    return s
+
+
+genName.i = 0
+
+
 class JExpr(object, metaclass=abc.ABCMeta):
     # Abstract Method for execution
     @abc.abstractmethod
@@ -55,7 +64,7 @@ class JExpr(object, metaclass=abc.ABCMeta):
     def createContext(self):
         raise NotImplemented()
 
-    def make(self, BodyList, depth):
+    def make(self, BodyList, name):
         raise NotImplemented()
 
 class JUnit(JExpr, metaclass=abc.ABCMeta):
@@ -99,17 +108,15 @@ class JUnit(JExpr, metaclass=abc.ABCMeta):
 
 
 class JInt(JUnit):
-    def make(self, BodyList, depth):
-        name = "x"+str(depth)
-        BodyList.append("{} = malloc(sizeof(num));\n".format(name))
+    def make(self, BodyList, name):
+        BodyList.append("num* {} = malloc(sizeof(num));\n".format(name))
         BodyList.append("{}->m.tag = NUM;\n".format(name))
-        BodyList.append("{}->c = {!s};\n".format(name, self.val))
+        BodyList.append("{}->n = {!s};\n".format(name, self.val))
 
 
 class JBool(JUnit):
-    def make(self, BodyList, depth):
-        name = "x"+str(depth)
-        BodyList.append("{} = malloc(sizeof(bool));\n".format(name))
+    def make(self, BodyList, name):
+        BodyList.append("bool* {} = malloc(sizeof(bool));\n".format(name))
         BodyList.append("{}->m.tag = BOOL;\n".format(name))
         if self.val:
             x = 1
@@ -152,11 +159,10 @@ class JPrim(JExpr):
     def createContext(self, expr):
         raise Exception("createContext should not be called on Prim")
 
-    def make(self, BodyList, depth):
-        name = "x"+str(depth)
-        BodyList.append("{} = malloc(sizeof(prim));\n".format(name))
+    def make(self, BodyList, name):
+        BodyList.append("prim* {} = malloc(sizeof(prim));\n".format(name))
         BodyList.append("{}->m.tag = PRIM;\n".format(name))
-        BodyList.append("{}->c = %s;\n".format(name, PrimDict[self.prim]))
+        BodyList.append("{}->p = {};\n".format(name, PrimDict[self.prim]))
 
 
 def Add(args: list):
@@ -349,22 +355,22 @@ class JApp(JExpr):
         self.JL[0] = None
         return expr
 
-    def make(self, BodyList, depth):
-        name = "x"+str(depth)
-        nextname = "x"+str(depth+1)
-        tempname = "temp"+str(depth)
-        BodyList.append("{0} = malloc(sizeof(app));\n".format(name))
+    def make(self, BodyList, name):
+        BodyList.append("app* {0} = malloc(sizeof(app));\n".format(name))
         BodyList.append("{0}->m.tag = APP;\n".format(name))
-        self.JL[0].make(BodyList, depth+1)
-        BodyList.append("{0}->f = {1};\n".format(name, nextname))
+        n = genName()
+        self.JL[0].make(BodyList, n)
+        BodyList.append("{0}->f = {1};\n".format(name, n))
         BodyList.append("{0}->args = (exprlist*) malloc(sizeof(exprlist));\n".format(name))
-        BodyList.append("{0} = {1}->args;\n".format(tempname, name))
+        tempname = genName()
+        BodyList.append("exprlist* {0} = {1}->args;\n".format(tempname, name))
         for i, e in enumerate(self.JL[1:]):
-            e.make(BodyList, depth+1)
-            BodyList.append("{0}->e = {1};\n".format(tempname, nextname))
+            n = genName()
+            e.make(BodyList, n)
+            BodyList.append("{0}->e = {1};\n".format(tempname, n))
             if i+1 != len(self.JL):
-                BodyList.append("{0}->l = (exprlist*) malloc(sizeof(exprlist))\n".format(tempname))
-                BodyList.append("{0} = {0}->l\n".format(tempname))
+                BodyList.append("{0}->l = (exprlist*) malloc(sizeof(exprlist));\n".format(tempname))
+                BodyList.append("{0} = {0}->l;\n".format(tempname))
         BodyList.append("{0}->l = NULL;\n".format(tempname))
 
 
@@ -437,17 +443,18 @@ class JIf(JExpr):
         self.JL[0] = None
         return expr
 
-    def make(self, BodyList, depth):
-        name = "x"+str(depth)
-        nextname = "x"+str(depth+1)
-        BodyList.append("{} = malloc(sizeof(jif));\n".format(name))
+    def make(self, BodyList, name):
+        BodyList.append("jif* {} = malloc(sizeof(jif));\n".format(name))
         BodyList.append("{}->m.tag = IF;\n".format(name))
-        self.JL[0].make(BodyList, depth+1)
-        BodyList.append("{}->c = {};\n".format(name, nextname))
-        self.JL[1].make(BodyList, depth+1)
-        BodyList.append("{}->t = {};\n".format(name, nextname))
-        self.JL[2].make(BodyList, depth+1)
-        BodyList.append("{}->f = {};\n".format(name, nextname))
+        n = genName()
+        self.JL[0].make(BodyList, n)
+        BodyList.append("{}->c = {};\n".format(name, n))
+        n = genName()
+        self.JL[1].make(BodyList, n)
+        BodyList.append("{}->t = {};\n".format(name, n))
+        n = genName()
+        self.JL[2].make(BodyList, n)
+        BodyList.append("{}->f = {};\n".format(name, n))
 
 
 class JBinary(JExpr):
@@ -639,45 +646,49 @@ def CCRun(je):
 
 
 def makeHeader(file):
-    headerList = ["#include<stdio.h>\n", "enum tags { NUM, BOOL, PRIM, IF, APP, KRET, KIF, KAPP };\n"]
+    headerList = ["#include<stdio.h>\n","#include<stdlib.h>\n",
+                  "enum tags { NUM, BOOL, PRIM, IF, APP, KIF, KAPP };\n"]
     headerList.append("enum prims { ADD, SUB, MULT, DIV, LT, LTE, EQ, GTE, GT }l;\n")
-    headerList.append("struct expr{\n")
-    headerList.append("\t enum tags tag; } ;\n")
-    headerList.append("struct exprlist{\n")
-    headerList.append("\t expr* e;\n")
-    headerList.append("\t exprlist* l;\n")
-    headerList.append("struct jif{\n")
-    headerList.append("\t expr m\n")
-    headerList.append("\t expr *c, *t, *f; };\n")
-    headerList.append("struct app{\n")
+    headerList.append("typedef struct expr{\n")
+    headerList.append("\t enum tags tag; } expr;\n")
+    headerList.append("typedef struct exprlist{\n")
+    headerList.append("\t void *e;\n")
+    headerList.append("\t struct exprlist* l; } exprlist;\n")
+    headerList.append("typedef struct jif{\n")
     headerList.append("\t expr m;\n")
-    headerList.append("\t expr *f, *args; };\n")
-    headerList.append("struct num{\n")
+    headerList.append("\t void *c, *t, *f; } jif;\n")
+    headerList.append("typedef struct app{\n")
     headerList.append("\t expr m;\n")
-    headerList.append("\t int n; };\n")
-    headerList.append("struct bool{\n")
+    headerList.append("\t void *f;\n")
+    headerList.append("\t exprlist *args; } app;\n")
+    headerList.append("typedef struct num{\n")
     headerList.append("\t expr m;\n")
-    headerList.append("\t int n; };\n")
-    headerList.append("struct prim{\n")
+    headerList.append("\t int n; } num;\n")
+    headerList.append("typedef struct bool{\n")
     headerList.append("\t expr m;\n")
-    headerList.append("\t enum prims prim; };\n")
-    headerList.append("struct kif{ \n")
+    headerList.append("\t int n; } bool;\n")
+    headerList.append("typedef struct prim{\n")
+    headerList.append("\t expr m;\n")
+    headerList.append("\t enum prims p; } prim;\n")
+    headerList.append("typedef struct kif{ \n")
+    headerList.append("\t expr m;\n")
     headerList.append("\t expr* t;\n")
     headerList.append("\t expr* f;\n")
-    headerList.append("\t k* k; };\n")
-    headerList.append("struct kapp{ \n")
+    headerList.append("\t void* k; } kif;\n")
+    headerList.append("typedef struct kapp{ \n")
+    headerList.append("\t expr m;\n")
     headerList.append("\t exprlist* v;\n")
     headerList.append("\t exprlist* e;\n")
-    headerList.append("\t k* k; };\n")
+    headerList.append("\t void* k; } kapp;\n")
     file.writelines(headerList)
 
 
 def makeBody(file, je):
     BodyList = ["int main(int arg, char* argv[]){\n"]
-    je.make(BodyList, 0)
-    BodyList.append("Expr* e = x0;\n")
-    BodyList.append("result = VM(e);\n")
-    BodyList.append("printf(\"%%i\", result);\n")
+    je.make(BodyList, genName())
+    BodyList.append("void* e = x0;\n")
+    BodyList.append("int result = VM(e);\n")
+    BodyList.append("printf(\"%i\", result);\n")
     BodyList.append("return 0;\n")
     BodyList.append("}")
     file.writelines(BodyList)
