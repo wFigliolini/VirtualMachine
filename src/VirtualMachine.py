@@ -110,14 +110,14 @@ class JUnit(JExpr, metaclass=abc.ABCMeta):
 
 class JInt(JUnit):
     def make(self, BodyList, name):
-        BodyList.append("num* {} = malloc(sizeof(num));\n".format(name))
+        BodyList.append("num* {} = (num*) malloc(sizeof(num));\n".format(name))
         BodyList.append("{}->m.tag = NUM;\n".format(name))
         BodyList.append("{}->n = {!s};\n".format(name, self.val))
 
 
 class JBool(JUnit):
     def make(self, BodyList, name):
-        BodyList.append("bool* {} = malloc(sizeof(bool));\n".format(name))
+        BodyList.append("bool* {} = (bool*) malloc(sizeof(bool));\n".format(name))
         BodyList.append("{}->m.tag = BOOL;\n".format(name))
         if self.val:
             x = 1
@@ -161,7 +161,7 @@ class JPrim(JExpr):
         raise Exception("createContext should not be called on Prim")
 
     def make(self, BodyList, name):
-        BodyList.append("prim* {} = malloc(sizeof(prim));\n".format(name))
+        BodyList.append("prim* {} = (prim*) malloc(sizeof(prim));\n".format(name))
         BodyList.append("{}->m.tag = PRIM;\n".format(name))
         BodyList.append("{}->p = {};\n".format(name, PrimDict[self.prim]))
 
@@ -357,7 +357,7 @@ class JApp(JExpr):
         return expr
 
     def make(self, BodyList, name):
-        BodyList.append("app* {0} = malloc(sizeof(app));\n".format(name))
+        BodyList.append("app* {0} = (app*) malloc(sizeof(app));\n".format(name))
         BodyList.append("{0}->m.tag = APP;\n".format(name))
         n = genName()
         self.JL[0].make(BodyList, n)
@@ -445,7 +445,7 @@ class JIf(JExpr):
         return expr
 
     def make(self, BodyList, name):
-        BodyList.append("jif* {} = malloc(sizeof(jif));\n".format(name))
+        BodyList.append("jif* {} = (jif*) malloc(sizeof(jif));\n".format(name))
         BodyList.append("{}->m.tag = IF;\n".format(name))
         n = genName()
         self.JL[0].make(BodyList, n)
@@ -646,123 +646,17 @@ def CCRun(je):
     return extract(CC0(inject(je)))
 
 
-def makeHeader(file):
-    headerList = ["#include<stdio.h>\n","#include<stdlib.h>\n",
-                  "enum tags { NUM, BOOL, PRIM, IF, APP, KIF, KAPP };\n"]
-    headerList.append("enum prims { ADD, SUB, MULT, DIV, LT, LTE, EQ, GTE, GT }l;\n")
-    headerList.append("typedef struct expr{\n")
-    headerList.append("\t enum tags tag; } expr;\n")
-    headerList.append("typedef struct exprlist{\n")
-    headerList.append("\t void *e;\n")
-    headerList.append("\t struct exprlist* l; } exprlist;\n")
-    headerList.append("typedef struct jif{\n")
-    headerList.append("\t expr m;\n")
-    headerList.append("\t void *c, *t, *f; } jif;\n")
-    headerList.append("typedef struct app{\n")
-    headerList.append("\t expr m;\n")
-    headerList.append("\t void *f;\n")
-    headerList.append("\t exprlist *args; } app;\n")
-    headerList.append("typedef struct num{\n")
-    headerList.append("\t expr m;\n")
-    headerList.append("\t int n; } num;\n")
-    headerList.append("typedef struct bool{\n")
-    headerList.append("\t expr m;\n")
-    headerList.append("\t int n; } bool;\n")
-    headerList.append("typedef struct prim{\n")
-    headerList.append("\t expr m;\n")
-    headerList.append("\t enum prims p; } prim;\n")
-    headerList.append("typedef struct kif{ \n")
-    headerList.append("\t expr m;\n")
-    headerList.append("\t void* t;\n")
-    headerList.append("\t void* f;\n")
-    headerList.append("\t void* k; } kif;\n")
-    headerList.append("typedef struct kapp{ \n")
-    headerList.append("\t expr m;\n")
-    headerList.append("\t exprlist* v;\n")
-    headerList.append("\t exprlist* e;\n")
-    headerList.append("\t void* k; } kapp;\n")
-    headerList.append("void *new_kif(void* t, void* f, void* k){\n")
-    headerList.append("\tvoid *result = malloc(sizeof(kif))\n")
-    headerList.append("\tresult->m.tag = KIF\n")
-    headerList.append("\tresult->t = t\n")
-    headerList.append("\tresult->f = f\n")
-    headerList.append("\tresult->k = k\n")
-    headerList.append("\treturn result\n")
-    headerList.append("}\n")
-    headerList.append("void *new_kapp(void *f, exprlist* args, void* k){\n")
-    headerList.append("\tvoid *result = malloc(sizeof(kif));\n")
-    headerList.append("\tresult->m.tag = KAPP;\n")
-    headerList.append("\tresult->v = malloc(sizeof(exprlist));\n")
-    headerList.append("\tresult->v->e = f \n")
-    headerList.append("\tresult->v->l = NULL \n")
-    headerList.append("\tresult->e = args;\n")
-    headerList.append("\tresult->k = k;\n")
-    headerList.append("\treturn result;\n")
-    headerList.append("}\n")
-    file.writelines(headerList)
-
-
-def makeMachine(file):
-    machineList = []
-    machineList.append("void* VM(void* s){\n")
-    machineList.append("\tvoid *e = s;\n")
-    machineList.append("\tvoid * k = NULL;\n")
-    machineList.append("\tvoid *temp = NULL\n")
-    machineList.append("\twhile(1){\n")
-    machineList.append("\t\tcurrTag = e->m.tag; \n")
-    machineList.append("\t\tkTag = k->m.tag; \n")
-    machineList.append("\t\tif( currTag == IF ){\n")
-    machineList.append("\t\t\tk = new_kif(e->t, e->f, k);\n")
-    machineList.append("\t\t\ttemp = e;\n")
-    machineList.append("\t\t\te = e->c;\n")
-    machineList.append("\t\t\tfree(temp);\n")
-    machineList.append("\t\t\tcontinue;\n")
-    machineList.append("\t\t}\n")
-    machineList.append("\t\tif( currTag == APP ){\n")
-    machineList.append("\t\t\tk = new_kapp(e->f, e->args, k);\n")
-    machineList.append("\t\t\ttemp = e;\n")
-    machineList.append("\t\t\tfree(temp);\n")
-    machineList.append("\t\t\te = k->e->e;\n")
-    machineList.append("\t\t\ttemp = k->e;\n")
-    machineList.append("\t\t\tk->e = k->e->l;\n")
-    machineList.append("\t\t\tfree(temp);\n")
-    machineList.append("\t\t\tcontinue;\n")
-    machineList.append("\t\t}\n")
-    machineList.append("\t\tif( k == NULL ){\n")
-    machineList.append("\t\t\treturn e;\n")
-    machineList.append("\t\t}\n")
-    machineList.append("\t\tif( ktag == KIF ){\n")
-    machineList.append("\t\t\tif(e->n != 0){\n")
-    machineList.append("\t\t\t\tfree(e);\n")
-    machineList.append("\t\t\t\te = k->t;\n")
-    machineList.append("\t\t\t\ttemp = k;\n")
-    machineList.append("\t\t\t\tk = k->k;\n")
-    machineList.append("\t\t\t\tfree(temp);\n")
-    machineList.append("\t\t\t}\n")
-    machineList.append("\t\t\telse{\n")
-    machineList.append("\t\t\t\tfree(e);\n")
-    machineList.append("\t\t\t\te = k->f;\n")
-    machineList.append("\t\t\t\ttemp = k;\n")
-    machineList.append("\t\t\t\tk = k->k;\n")
-    machineList.append("\t\t\t\tfree(temp);\n")
-    machineList.append("\t\t\t}\n")
-    machineList.append("\t\t}\n")
-    machineList.append("\t\tif(k->e == NULL){\n")
-    machineList.append("\t\t}\n")
-    machineList.append("\t\telse{\n")
-    machineList.append("\t\t\t\n")
-    machineList.append("\t\t}\n")
-    machineList.append("\t}\n")
-    machineList.append("}\n")
-    file.writelines(machineList)
-
-
 def makeBody(file, je):
     BodyList = ["int main(int arg, char* argv[]){\n"]
     je.make(BodyList, genName())
     BodyList.append("void* e = x0;\n")
-    BodyList.append("int result = VM(e);\n")
-    BodyList.append("printf(\"%i\", result->n);\n")
+    BodyList.append("void* r = VM(e);\n")
+    BodyList.append("num* result = (num*) r;\n")
+    BodyList.append("if(result->m.tag == NUM){\n")
+    BodyList.append("\tprintf(\"%i\", result->n); }\n")
+    BodyList.append("else if(result->m.tag == BOOL){\n")
+    BodyList.append("\tprintf(\"%s\", result->n ? \"True\" : \"False\");}\n")
+    BodyList.append("else return 1;\n")
     BodyList.append("return 0;\n")
     BodyList.append("}")
     file.writelines(BodyList)
@@ -770,7 +664,6 @@ def makeBody(file, je):
 
 def print(je):
     fileout = open("JVMsample.c", "w")
-    makeHeader(fileout)
     makeBody(fileout, je)
 
 
@@ -778,9 +671,10 @@ def CKrun(je):
     fileout = open(".JVM.c", "w")
     makeHeader(fileout)
     makeMachine(fileout)
-    makeBody(fileout)
+    makeBody(fileout, je)
     os.system("gcc .JVM.c")
     result = subprocess.check_output("./a.out", shell=True)
     fileout.close()
     os.remove(".JVM.c")
+    os.remove("a.out")
     return result
