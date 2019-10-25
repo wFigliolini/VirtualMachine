@@ -2,18 +2,18 @@
 #include<stdio.h>
 #include<stdlib.h>
 enum tags { NUM, BOOL, PRIM, IF, APP, KIF, KAPP };
-enum prims { ADD, SUB, MULT, DIV, LT, LTE, EQ, GTE, GT }l;
+enum prims { ADD, SUB, MULT, DIV, LT, LTE, EQ, GTE, GT };
 typedef struct expr{
 	 enum tags tag; } expr;
 typedef struct exprlist{
-	 void *e;
+	 expr *e;
 	 struct exprlist* l; } exprlist;
 typedef struct jif{
 	 expr m;
-	 void *c, *t, *f; } jif;
+	 expr *c, *t, *f; } jif;
 typedef struct app{
 	 expr m;
-	 void *f;
+	 expr *f;
 	 exprlist *args; } app;
 typedef struct num{
 	 expr m;
@@ -26,12 +26,12 @@ typedef struct prim{
 	 enum prims p; } prim;
 typedef struct kif{ 
 	 expr m;
-	 void* t;
-	 void* f;
-	 void* k; } kif;
+	 expr* t;
+	 expr* f;
+	 expr* k; } kif;
 typedef struct kapp{ 
 	 expr m;
 	 exprlist* v;
 	 exprlist* e;
-	 void* k; } kapp;
+	 expr* k; } kapp;
 
