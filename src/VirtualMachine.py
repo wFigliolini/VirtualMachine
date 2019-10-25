@@ -12,12 +12,13 @@ from collections import deque
 Identities = {"+": 0, "*": 1, "-": 0, "/": 1, "<": 0, "<=": 0, "==": 0,
               ">=": 0, ">": 0}
 Prims = ["+", "-", "*", "/", "<", "<=", "==", ">=", ">"]
-PrimDict = {"+": "ADD", "-": "SUB", "*": "MULT", "/": "DIV", "<": "LT", "<=": "LTE", "==": "EQ", ">=": "GTE", ">": "GT"}
+PrimDict = {"+": "ADD", "-": "SUB", "*": "MULT", "/": "DIV", "<": "LT",
+            "<=": "LTE", "==": "EQ", ">=": "GTE", ">": "GT"}
 
 
 def genName():
     s = "x" + str(genName.i)
-    genName.i +=1
+    genName.i += 1
     return s
 
 
@@ -649,8 +650,8 @@ def CCRun(je):
 def makeBody(file, je):
     BodyList = ["#include \"JVM.h\"\n","int main(int arg, char* argv[]){\n"]
     je.make(BodyList, genName())
-    BodyList.append("void* e = x0;\n")
-    BodyList.append("void* r = VM(e);\n")
+    BodyList.append("expr* e = x0;\n")
+    BodyList.append("expr* r = VM(e);\n")
     BodyList.append("num* result = (num*) r;\n")
     BodyList.append("if(result->m.tag == NUM){\n")
     BodyList.append("\tprintf(\"%i\", result->n); }\n")
