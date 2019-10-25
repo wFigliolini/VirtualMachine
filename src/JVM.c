@@ -1,6 +1,6 @@
 #include "JVM.h"
 
-kif *new_kif(void* t, void* f, void* k){
+kif *new_kif(expr* t, expr* f, expr* k){
 	kif *result = (kif*) malloc(sizeof(kif));
 	result->m.tag = KIF;
 	result->t = t;
@@ -8,7 +8,7 @@ kif *new_kif(void* t, void* f, void* k){
 	result->k = k;
 	return result;
 }
-kapp *new_kapp(void *f, exprlist* args, void* k){
+kapp *new_kapp(expr *f, exprlist* args, expr* k){
 	kapp *result = (kapp*) malloc(sizeof(kif));
 	result->m.tag = KAPP;
 	result->v = (exprlist*) malloc(sizeof(exprlist));
@@ -26,7 +26,16 @@ num* valPop(exprlist** l){
     free(temp);
     return result;
 }
-void valPush(exprlist*l, void* e){
+
+expr* exprPop(exprlist** l){
+    expr* result =  (*l)->e;
+    void* temp = *l;
+    (*l) = (*l)->l;
+    free(temp);
+    return result;
+}
+
+void valPush(exprlist*l, expr* e){
     while(l->l!=NULL){
         l = l->l;
     }
@@ -48,18 +57,17 @@ bool* new_bool(int n){
     return result;
 }
 
-void* VM(void* s){
-	void *e = s;
-	void *k = NULL;
+expr* VM(expr* s){
+	expr *e = s;
+	expr *k = NULL;
 	void *temp = NULL;
     printf("Starting VM\n");
 	while(1){
-		app* gt = (app*) e;
-		enum tags currTag = gt->m.tag; 
+		enum tags currTag = e->tag; 
         printf("Current e is %i\n", currTag);
 		if( currTag == IF ){
 			jif* eif = (jif*) e;
-			k = new_kif(eif->t, eif->f, k);
+			k = (expr*) new_kif(eif->t, eif->f, k);
 			temp = eif;
 			e = eif->c;
 			free(temp);
@@ -67,7 +75,7 @@ void* VM(void* s){
 		}
 		if( currTag == APP ){
 			app* eapp = (app*) e;
-			k = new_kapp(eapp->f, eapp->args, k);
+			k = (expr*) new_kapp(eapp->f, eapp->args, k);
 			temp = eapp;
 			free(temp);
 			kapp* kapp1 = (kapp*) k;
@@ -80,8 +88,7 @@ void* VM(void* s){
 		if( k == NULL ){
 			return e;
 		}
-		kapp* gkt = (kapp*) k; 
-		enum tags kTag = gkt->m.tag; 
+		enum tags kTag = k->tag; 
         printf("Current k is %i\n", kTag);
 		if( kTag == KIF ){
 			bool* eb = (bool*) e;
@@ -103,11 +110,13 @@ void* VM(void* s){
 			}
 		}
 		kapp* kapp2 = (kapp*) k;
+        valPush(kapp2->v, e);
+        e = exprPop(&(kapp2->e));
         //Delta Function
 		if(kapp2->e == NULL){
             //insert e into vals
             valPush(kapp2->v, e);
-            prim* p = kapp2->v->e;
+            prim* p = (prim*) kapp2->v->e;
             temp = kapp2->v;
             kapp2->v = kapp2->v->l;
             free(temp);
@@ -121,7 +130,7 @@ void* VM(void* s){
                             numb = valPop(&(kapp2->v));
                             n+=numb->n;
                         }
-                        e = new_num(n);
+                        e = (expr*) new_num(n);
                         break;
                     case SUB:
                         n = 0;
@@ -136,7 +145,7 @@ void* VM(void* s){
                                 n-=numb->n;
                             }
                         }
-                        e = new_num(n);
+                        e = (expr*) new_num(n);
                         break;
                     case MULT:
                         n = 1;
@@ -144,7 +153,7 @@ void* VM(void* s){
                             numb = valPop(&(kapp2->v));
                             n*=numb->n;
                         }
-                        e = new_num(n);
+                        e = (expr*) new_num(n);
                         break;
                     case DIV:
                         n = 1;
@@ -159,7 +168,7 @@ void* VM(void* s){
                                 n /=numb->n;
                             }
                         }
-                        e = new_num(n);
+                        e = (expr*) new_num(n);
                         break;
                     case LT:
                         n = 0;
@@ -172,7 +181,7 @@ void* VM(void* s){
                             numb = valPop(&(kapp2->v));
                             n = n <numb->n;
                         }
-                        e = new_bool(n);
+                        e = (expr*) new_bool(n);
                         break;
                     case LTE:
                         n = 0;
@@ -185,7 +194,7 @@ void* VM(void* s){
                             numb = valPop(&(kapp2->v));
                             n = n <= numb->n;
                         }
-                        e = new_bool(n);
+                        e = (expr*) new_bool(n);
                         break;
                     case EQ:
                         n = 0;
@@ -198,7 +207,7 @@ void* VM(void* s){
                             numb = valPop(&(kapp2->v));
                             n = n == numb->n;
                         }
-                        e = new_bool(n);
+                        e = (expr*) new_bool(n);
                         break;
                     case GTE:
                         n = 0;
@@ -211,7 +220,7 @@ void* VM(void* s){
                             numb = valPop(&(kapp2->v));
                             n = n >= numb->n;
                         }
-                        e = new_bool(n);
+                        e = (expr*) new_bool(n);
                         break;
                     case GT:
                         n = 0;
@@ -224,7 +233,7 @@ void* VM(void* s){
                             numb = valPop(&(kapp2->v));
                             n = n >numb->n;
                         }
-                        e = new_bool(n);
+                        e = (expr*) new_bool(n);
                         break;
                 }
             }
@@ -235,14 +244,6 @@ void* VM(void* s){
             temp = kapp2;
             k = kapp2->k;
 			free(temp);
-		}
-		else{
-			valPush(kapp2->v, e);
-			e = kapp2->e->e;
-			temp = kapp2->e;
-			kapp2->e = kapp2->e->l;
-			free(temp);
-			continue;
 		}
 	}
 }
