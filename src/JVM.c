@@ -20,11 +20,13 @@ kapp *new_kapp(expr *f, exprlist* args, expr* k){
 }
 
 num* valPop(exprlist** l){
-    printf("Poping value for delta function\n");
-    num* result = (num*) (*l)->e;
-    void* temp = *l;
-    (*l) = (*l)->l;
-    printf("%i\n", result->n);
+    exprlist* temp = *l;
+    num* result = NULL;
+    if(temp != NULL){
+        result = (num*) temp->e;
+        *l = temp->l;
+    }
+
     return result;
 }
 
@@ -36,12 +38,14 @@ expr* exprPop(exprlist** l){
 }
 
 void valPush(exprlist*l, expr* e){
-    while(l->l!=NULL){
-        l = l->l;
+    exprlist* temp = l;
+    while(temp->l!=NULL){
+        temp = temp->l;
     }
     exprlist* newnode = (exprlist*) malloc(sizeof(exprlist));
     newnode->e = e;
     newnode->l = NULL;
+    temp->l = newnode;
 }
 
 num* new_num(int n){
@@ -57,14 +61,12 @@ bool* new_bool(int n){
     return result;
 }
 
-expr* VM(expr* s){
+void VM(expr* s, expr** r){
 	expr *e = s;
 	expr *k = NULL;
 	void *temp = NULL;
-    printf("Starting VM\n");
 	while(1){
 		enum tags currTag = e->tag; 
-        printf("Current e is %i\n", currTag);
 		if( currTag == IF ){
 			jif* eif = (jif*) e;
 			k = (expr*) new_kif(eif->t, eif->f, k);
@@ -83,10 +85,10 @@ expr* VM(expr* s){
 			continue;
 		}
 		if( k == NULL ){
-			return e;
+			*r = e;
+            return;
 		}
-		enum tags kTag = k->tag; 
-        printf("Current k is %i\n", kTag);
+		enum tags kTag = k->tag;
 		if( kTag == KIF ){
 			bool* eb = (bool*) e;
 			kif* kif1 = (kif*) k;
