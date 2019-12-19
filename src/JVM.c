@@ -20,10 +20,11 @@ kapp *new_kapp(expr *f, exprlist* args, expr* k){
 }
 
 num* valPop(exprlist** l){
+    printf("Poping value for delta function\n");
     num* result = (num*) (*l)->e;
     void* temp = *l;
     (*l) = (*l)->l;
-    free(temp);
+    printf("%i\n", result->n);
     return result;
 }
 
@@ -31,7 +32,6 @@ expr* exprPop(exprlist** l){
     expr* result =  (*l)->e;
     void* temp = *l;
     (*l) = (*l)->l;
-    free(temp);
     return result;
 }
 
@@ -70,19 +70,16 @@ expr* VM(expr* s){
 			k = (expr*) new_kif(eif->t, eif->f, k);
 			temp = eif;
 			e = eif->c;
-			free(temp);
 			continue;
 		}
 		if( currTag == APP ){
 			app* eapp = (app*) e;
 			k = (expr*) new_kapp(eapp->f, eapp->args, k);
 			temp = eapp;
-			free(temp);
 			kapp* kapp1 = (kapp*) k;
 			e = kapp1->e->e;
 			temp = kapp1->e;
 			kapp1->e = kapp1->e->l;
-			free(temp);
 			continue;
 		}
 		if( k == NULL ){
@@ -93,19 +90,16 @@ expr* VM(expr* s){
 		if( kTag == KIF ){
 			bool* eb = (bool*) e;
 			kif* kif1 = (kif*) k;
-				free(eb);
 			if(eb->n != 0){
 				e = kif1->t;
 				temp = kif1;
 				k = kif1->k;
-				free(temp);
 				continue;
 			}
 			else{
 				e = kif1->f;
 				temp = k;
 				k = kif1->k;
-				free(temp);
 				continue;
 			}
 		}
@@ -119,7 +113,6 @@ expr* VM(expr* s){
             prim* p = (prim*) kapp2->v->e;
             temp = kapp2->v;
             kapp2->v = kapp2->v->l;
-            free(temp);
             if(p->m.tag == PRIM){
                 int n;
                 num* numb;
@@ -243,7 +236,6 @@ expr* VM(expr* s){
             //free kapp after completion of function
             temp = kapp2;
             k = kapp2->k;
-			free(temp);
 		}
 	}
 }
